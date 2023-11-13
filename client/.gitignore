@@ -1,0 +1,4 @@
+*.apk
+android/
+
+raylib/examples/

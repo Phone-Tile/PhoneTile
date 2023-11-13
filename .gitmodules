@@ -1,0 +1,4 @@
+
+[submodule "client/raylib"]
+	path = client/raylib
+	url = https://github.com/raysan5/raylib.git
