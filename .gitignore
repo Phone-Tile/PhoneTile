@@ -15,3 +15,5 @@ Cargo.lock
 
 *.DS_Store
 *.xcodeproj
+
+*glue.a
