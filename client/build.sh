@@ -20,7 +20,26 @@ FLAGS="-ffunction-sections -funwind-tables -fstack-protector-strong -fPIC -Wall 
 	-Wformat -Werror=format-security -no-canonical-prefixes \
 	-DANDROID -DPLATFORM_ANDROID -D__ANDROID_API__=29"
 
-INCLUDES="-I. -Iinclude -I../include -I$NATIVE_APP_GLUE -I$TOOLCHAIN/sysroot/usr/include"
+INCLUDES="-I. \
+            -Iinclude \
+            -I../include \
+            -I$NATIVE_APP_GLUE \
+            -I$TOOLCHAIN/sysroot/usr/include \
+            -Isrc/object/ \
+            -Isrc/memory/ \
+            -Isrc/game/ \
+            -Isrc/renderer/ \
+            -Isrc/ui/"
+            
+SRC="   src/game/intern/init.c\
+        src/renderer/intern/init.c\
+        src/renderer/intern/track.c\
+        src/ui/intern/widget.c\
+        src/ui/intern/event.c\
+        src/memory/intern/alloc_light_impl.c\
+        src/memory/intern/alloc_secured_impl.c\
+        src/memory/intern/malloc.c\
+        src/main.c"
 
 # Copy icons
 cp assets/icon_ldpi.png android/build/res/drawable-ldpi/icon.png
@@ -69,7 +88,7 @@ for ABI in $ABIS; do
 	$TOOLCHAIN/bin/llvm-ar rcs lib/$ABI/libnative_app_glue.a $NATIVE_APP_GLUE/native_app_glue.o
 
 	# Compile project
-	$CC src/*.c -o android/build/lib/$ABI/libmain.so -shared \
+	$CC $SRC -o android/build/lib/$ABI/libmain.so -shared \
 		$INCLUDES -I$TOOLCHAIN/sysroot/usr/include/$CCTYPE $FLAGS $ABI_FLAGS \
 		-Wl,-soname,libmain.so -Wl,--exclude-libs,libatomic.a -Wl,--build-id \
 		-Wl,--no-undefined -Wl,-z,noexecstack -Wl,-z,relro -Wl,-z,now \
@@ -116,5 +135,7 @@ jarsigner -keystore android/raylib.keystore -storepass raylib -keypass raylib \
 $BUILD_TOOLS/zipalign -f 4 game.apk game.final.apk
 mv -f game.final.apk game.apk
 
+# Install to device or emulator
+android/sdk/platform-tools/adb install -r game.apk
 # Install to device or emulator
 android/sdk/platform-tools/adb install -r game.apk
