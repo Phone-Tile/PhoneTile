@@ -33,7 +33,7 @@ export NDK_HOME=$PWD/android/ndk
 
 Et maintenant la partie un peu drôle qui permet de fonctionner.
 
-Il faut modifier le fichier `android/ndk/sources/android/native_app_glue/android_native_app_glue.c` `android/ndk/sources/android/native_app_glue/android_native_app_glue.h` 
+Il faut modifier le fichier `android/ndk/sources/android/native_app_glue/android_native_app_glue.c` `android/ndk/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/android/native_activity.h` 
 et modifier le nom de la fonction `ANativeActivity_onCreate` par `ANativeActivity_onCreate_C`.
 
 Ah et j'oubliais, une dernière partie un peu drole c'est que les scripts pour compiler sont faux donc il faut modifier le fichier 
