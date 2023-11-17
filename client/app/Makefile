@@ -13,7 +13,8 @@ ABIS=armeabi-v7a x86_64
 
 PREFIX=..
 
-BUILD_TOOLS=$(PREFIX)/android/sdk/build-tools/29.0.3
+SDK_VERSION?=29.0.3
+BUILD_TOOLS=$(PREFIX)/android/sdk/build-tools/$(SDK_VERSION)
 TOOLCHAIN=$(PREFIX)/android/ndk/toolchains/llvm/prebuilt/linux-x86_64
 NATIVE_APP_GLUE=$(PREFIX)/android/ndk/sources/android/native_app_glue_modified
 
