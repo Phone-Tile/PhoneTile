@@ -57,7 +57,7 @@ fn generate_bindings(ndk_home :&str){
 
 fn compile_lib(_arch : &str, _make_arch : &str,compiler : &str,ndk_home :&str){
     cc::Build::new()
-        .file(format!("{ndk_home}/sources/android/native_app_glue_modified/android_native_app_glue.c"))
+        .file(format!("{ndk_home}/sources/android/native_app_glue/android_native_app_glue.c"))
         .flag(format!("--sysroot={ndk_home}/toolchains/llvm/prebuilt/linux-x86_64/sysroot").as_str())
         .compiler(compiler)
         .archiver(format!("{ndk_home}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar"))
