@@ -45,7 +45,7 @@ app: $(RUST_APP_NAME).apk
 binaries:
 	#cargo build --target=aarch64-linux-android
 	cargo build --target=armv7-linux-androideabi
-	#cargo build --target=i686-linux-android
+	cargo build --target=i686-linux-android
 	cargo build	--target=x86_64-linux-android
 
 
@@ -83,13 +83,14 @@ $(RUST_APP_NAME).apk: binaries android/$(RUST_APP_NAME).keystore
 		-I $(PREFIX)/android/sdk/platforms/android-29/android.jar -F $(RUST_APP_NAME).apk android/build/dex
 	mkdir -p android
 	cp target/x86_64-linux-android/$(MODE)/lib$(RUST_APP_NAME).so android/build/lib/x86_64/lib$(RUST_APP_NAME).so
-	#cp target/x86-linux-android/$(MODE)/lib$(RUST_APP_NAME).so android/build/lib/x86/lib$(RUST_APP_NAME).so
+	cp target/i686-linux-android/$(MODE)/lib$(RUST_APP_NAME).so android/build/lib/x86/lib$(RUST_APP_NAME).so
 	cp target/armv7-linux-androideabi/$(MODE)/lib$(RUST_APP_NAME).so android/build/lib/armeabi-v7a/lib$(RUST_APP_NAME).so
 
 # Add libraries to APK
 	cd android/build ; \
 	../../$(BUILD_TOOLS)/aapt add ../../$(RUST_APP_NAME).apk lib/armeabi-v7a/lib$(RUST_APP_NAME).so ; \
 	../../$(BUILD_TOOLS)/aapt add ../../$(RUST_APP_NAME).apk lib/x86_64/lib$(RUST_APP_NAME).so ; \
+	../../$(BUILD_TOOLS)/aapt add ../../$(RUST_APP_NAME).apk lib/x86/lib$(RUST_APP_NAME).so ; \
 	cd ../..
 
 	jarsigner -keystore android/$(RUST_APP_NAME).keystore -storepass $(RUST_APP_NAME) -keypass $(RUST_APP_NAME) \
