@@ -1,18 +1,17 @@
-use std::{path::PathBuf,env};
-
+use std::{env, path::PathBuf};
 
 pub fn main() {
     //track file
     println!("cargo:rerun-if-changed=src/wrapper.h");
 
     let binding = env::var("TARGET").unwrap();
-    let binding_vec : Vec<&str>= binding.split('-').collect();
+    let binding_vec: Vec<&str> = binding.split('-').collect();
     let arch = binding_vec[0];
-    let (make_arch,_compiler) = match arch {
-        "armv7" => ("arm","armv7a"),
-        "aarch64" => ("arm64","aarch64"),
-        "i686" => ("x86","i686"),
-        a => (a,a)
+    let (make_arch, _compiler) = match arch {
+        "armv7" => ("arm", "armv7a"),
+        "aarch64" => ("arm64", "aarch64"),
+        "i686" => ("x86", "i686"),
+        a => (a, a),
     };
 
     let compiler = env::var("RUSTC_LINKER").unwrap();
@@ -21,30 +20,35 @@ pub fn main() {
     let ndk_home = env::var("NDK_HOME").unwrap_or("../android/ndk".to_string());
     let ndk_home = ndk_home.as_str();
 
+    #[cfg(target_os = "linux")]
+    let sys = "linux";
+    #[cfg(target_os = "macos")]
+    let sys = "darwin";
+
     //generate bindings
-    generate_bindings(ndk_home);
+    generate_bindings(ndk_home, sys);
 
-    compile_lib(arch, make_arch,compiler,ndk_home);
+    compile_lib(arch, make_arch, compiler, ndk_home, sys);
 
-    link_lib(arch,ndk_home);
-
+    link_lib(arch, ndk_home, sys);
 }
 
-fn link_lib(arch : &str, ndk_home :&str){
+fn link_lib(arch: &str, ndk_home: &str, sys: &str) {
     println!("cargo:rustc-link-search=native=lib/{arch}");
-    println!("cargo:rustc-link-search=native={ndk_home}/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/17/lib/linux/{arch}");
+    println!("cargo:rustc-link-search=native={ndk_home}/toolchains/llvm/prebuilt/{sys}-x86_64/lib/clang/17/lib/linux/{arch}");
 }
 
 //bindgen wrapper.h -o src/ffi_armv7.rs -- --sysroot=../../../raylibbind/android/ndk-save/sysroot --target=armv7-linux-androideabi
 
-fn generate_bindings(ndk_home :&str){
+fn generate_bindings(ndk_home: &str, sys: &str) {
     let header_path = "src/wrapper.h";
 
     let builder = bindgen::Builder::default()
         .header(header_path)
-        .clang_arg(format!("--sysroot={ndk_home}/toolchains/llvm/prebuilt/linux-x86_64/sysroot"))
+        .clang_arg(format!(
+            "--sysroot={ndk_home}/toolchains/llvm/prebuilt/{sys}-x86_64/sysroot"
+        ))
         .parse_callbacks(Box::new(bindgen::CargoCallbacks));
-
 
     let bindings = builder.generate().expect("Unable to generate bindings");
 
@@ -55,11 +59,17 @@ fn generate_bindings(ndk_home :&str){
         .expect("Couldn't write bindings !");
 }
 
-fn compile_lib(_arch : &str, _make_arch : &str,compiler : &str,ndk_home :&str){
+fn compile_lib(_arch: &str, _make_arch: &str, compiler: &str, ndk_home: &str, sys: &str) {
     cc::Build::new()
-        .file(format!("{ndk_home}/sources/android/native_app_glue/android_native_app_glue.c"))
-        .flag(format!("--sysroot={ndk_home}/toolchains/llvm/prebuilt/linux-x86_64/sysroot").as_str())
+        .file(format!(
+            "{ndk_home}/sources/android/native_app_glue/android_native_app_glue.c"
+        ))
+        .flag(
+            format!("--sysroot={ndk_home}/toolchains/llvm/prebuilt/{sys}-x86_64/sysroot").as_str(),
+        )
         .compiler(compiler)
-        .archiver(format!("{ndk_home}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar"))
+        .archiver(format!(
+            "{ndk_home}/toolchains/llvm/prebuilt/{sys}-x86_64/bin/llvm-ar"
+        ))
         .compile("libnative_app_glue.a");
 }

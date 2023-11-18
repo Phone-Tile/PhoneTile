@@ -12,11 +12,13 @@
 ABIS=armeabi-v7a x86_64
 
 PREFIX=..
+SYS = $(shell uname | tr A-Z a-z)
+NDK_HOME ?=../android/ndk
 
 SDK_VERSION?=29.0.3
 BUILD_TOOLS=$(PREFIX)/android/sdk/build-tools/$(SDK_VERSION)
-TOOLCHAIN=$(PREFIX)/android/ndk/toolchains/llvm/prebuilt/linux-x86_64
-NATIVE_APP_GLUE=$(PREFIX)/android/ndk/sources/android/native_app_glue_modified
+TOOLCHAIN=$(NDK_HOME)/toolchains/llvm/prebuilt/$(SYS)-x86_64
+NATIVE_APP_GLUE=$(NDK_HOME)/sources/android/native_app_glue
 
 FLAGS="-ffunction-sections -funwind-tables -fstack-protector-strong -fPIC -Wall \
 	-Wformat -Werror=format-security -no-canonical-prefixes \
@@ -32,7 +34,6 @@ RUST_APP_NAME=phone_tile
 
 MODE=debug
 
-NDK_HOME ?=../android/ndk 
 
 
 .PHONY: clean

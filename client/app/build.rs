@@ -11,6 +11,10 @@ fn main() {
         a => (a, a, a),
     };
 
+    #[cfg(target_os = "linux")]
+    let sys = "linux";
+    #[cfg(target_os = "macos")]
+    let sys = "darwin";
 
     let ndk_home = env::var("NDK_HOME").unwrap_or("../android/ndk".to_string());
 
@@ -26,10 +30,12 @@ fn main() {
     }
 
     //for link some lib
-    println!("cargo:rustc-link-arg=-I{ndk_home}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include");
-    println!("cargo:rustc-link-arg=--sysroot={ndk_home}/toolchains/llvm/prebuilt/linux-x86_64/sysroot");
+    println!("cargo:rustc-link-arg=-I{ndk_home}/toolchains/llvm/prebuilt/{sys}-x86_64/sysroot/usr/include");
+    println!(
+        "cargo:rustc-link-arg=--sysroot={ndk_home}/toolchains/llvm/prebuilt/{sys}-x86_64/sysroot"
+    );
     // useful for link unwind
-    println!("cargo:rustc-link-arg=-L{ndk_home}/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/17/lib/linux/{lib_ndk}");
+    println!("cargo:rustc-link-arg=-L{ndk_home}/toolchains/llvm/prebuilt/{sys}-x86_64/lib/clang/17/lib/linux/{lib_ndk}");
 
     // some parameters
     println!("cargo:rustc-link-arg=-shared");

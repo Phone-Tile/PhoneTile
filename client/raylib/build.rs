@@ -1,21 +1,24 @@
-use std::{path::PathBuf,env};
-
+use std::{env, path::PathBuf};
 
 pub fn main() {
     //track file
     println!("cargo:rerun-if-changed=src/wrapper.h");
 
     let binding = env::var("TARGET").unwrap();
-    let binding : Vec<&str>= binding.split('-').collect();
+    let binding: Vec<&str> = binding.split('-').collect();
     let arch = binding[0];
     let make_arch = match arch {
         "armv7" => "arm",
         "aarch64" => "arm64",
         "i686" => "x86",
         "i386" => "x86",
-        a => a
+        a => a,
     };
 
+    #[cfg(target_os = "linux")]
+    let sys = "linux";
+    #[cfg(target_os = "macos")]
+    let sys = "darwin";
 
     let ndk_home = env::var("NDK_HOME").unwrap_or("../android/ndk".to_string());
     let ndk_home = ndk_home.as_str();
@@ -25,16 +28,15 @@ pub fn main() {
 
     compile_lib(arch, make_arch, ndk_home);
 
-    link_lib(arch,ndk_home);
-
+    link_lib(arch, ndk_home, sys);
 }
 
-fn link_lib(arch : &str, ndk_home : &str){
+fn link_lib(arch: &str, ndk_home: &str, sys: &str) {
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     println!("cargo:warning={}", out_path.clone().display());
-    println!("cargo:rustc-link-search=native={}",out_path.display());
-    println!("cargo:rustc-link-search=native=lib/{}",arch);
-    println!("cargo:rustc-link-search=native={ndk_home}/toolchains/llvm/prebuilt/linux-x86_64/lib/clang/17/lib/linux/{arch}");
+    println!("cargo:rustc-link-search=native={}", out_path.display());
+    println!("cargo:rustc-link-search=native=lib/{}", arch);
+    println!("cargo:rustc-link-search=native={ndk_home}/toolchains/llvm/prebuilt/{sys}-x86_64/lib/clang/17/lib/linux/{arch}");
 
     println!("cargo:rustc-link-lib=static=raylib");
 
@@ -57,7 +59,6 @@ fn link_lib(arch : &str, ndk_home : &str){
     for lib in libs {
         println!("cargo:rustc-link-lib={}", lib);
     }
-
 }
 pub fn get_blocked_enum_names() -> Vec<String> {
     vec![
@@ -81,11 +82,14 @@ pub fn get_blocked_enum_names() -> Vec<String> {
         "ShaderUniformDataType",
         "TextureFilter",
         "TextureWrap",
-        "TraceLogLevel"
-    ].into_iter().map(|s| s.to_string()).collect()
+        "TraceLogLevel",
+    ]
+    .into_iter()
+    .map(|s| s.to_string())
+    .collect()
 }
 
-fn generate_bindings(){
+fn generate_bindings() {
     let header_path = "src/wrapper.h";
 
     let builder = bindgen::Builder::default()
@@ -100,7 +104,6 @@ fn generate_bindings(){
        // .blocklist_item("true_")
         ;
 
-
     //for enum_name in get_blocked_enum_names(){
     //    builder = builder.blocklist_type(format!("{}.*",enum_name))
     //}
@@ -114,7 +117,7 @@ fn generate_bindings(){
         .expect("Couldn't write bindings !");
 }
 
-fn compile_lib(arch : &str, make_arch : &str, ndk_home : &str){
+fn compile_lib(arch: &str, make_arch: &str, ndk_home: &str) {
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     if !std::process::Command::new("make")
         .current_dir("raylib/src")
@@ -134,11 +137,10 @@ fn compile_lib(arch : &str, make_arch : &str, ndk_home : &str){
         .arg(format!("ANDROID_NDK={ndk_home}"))
         .arg(format!("ANDROID_ARCH={}", make_arch))
         .arg("ANDROID_API_VERSION=29")
-        .arg(format!("RAYLIB_RELEASE_PATH={}",out_path.display()))
+        .arg(format!("RAYLIB_RELEASE_PATH={}", out_path.display()))
         .status()
         .expect("could not spawn `make`");
-    if !make.success()
-    {
+    if !make.success() {
         panic!("error in make {}", make);
     }
     println!("cargo:warning={}", "clean");

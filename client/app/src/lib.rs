@@ -3,8 +3,8 @@ use std::ffi::c_char;
 
 extern crate raylib;
 use raylib::{
-    ClearBackground, CloseWindow, Color, DrawFPS, DrawText, DrawTexture, SetTargetFPS, TraceLog,
-    TraceLogLevel_LOG_ERROR, UnloadTexture, WindowShouldClose, Rectangle,
+    ClearBackground, CloseWindow, Color, DrawFPS, DrawText, DrawTexture, Rectangle, SetTargetFPS,
+    TraceLog, TraceLogLevel_LOG_ERROR, UnloadTexture, WindowShouldClose,
 };
 
 use raylib::{draw, raylib_str};
@@ -25,7 +25,7 @@ pub extern "C" fn ANativeActivity_onCreate(
 }
 //////////////////////////////////////////////////////////////////////////
 mod ui;
-use ui::button::{Button,Style, Draw};
+use ui::button::{Button, Draw, Style};
 
 // Main function
 #[no_mangle]
@@ -47,23 +47,31 @@ extern "C" fn main() {
 
         SetTargetFPS(60);
 
-
         let style = Style::new(
-                    Color {
-                        r: 0,
-                        g: 0,
-                        b: 255,
-                        a: 255,
-                    },
-                    Color {
-                        r: 255,
-                        g: 255,
-                        b: 255,
-                        a: 255,
-                    });
+            Color {
+                r: 0,
+                g: 0,
+                b: 255,
+                a: 255,
+            },
+            Color {
+                r: 255,
+                g: 255,
+                b: 255,
+                a: 255,
+            },
+        );
 
-       let button = Button::new(Rectangle {x: 100.0,y: 200.0,width :100.0,height : 100.0}, style, Some("Un bouton".to_string()));
-
+        let button = Button::new(
+            Rectangle {
+                x: 100.0,
+                y: 200.0,
+                width: 100.0,
+                height: 100.0,
+            },
+            style,
+            Some("Un bouton".to_string()),
+        );
 
         while !WindowShouldClose() {
             draw!({
@@ -99,7 +107,6 @@ extern "C" fn main() {
                         a: 255,
                     },
                 );
-
 
                 DrawFPS(10, 10);
             });
