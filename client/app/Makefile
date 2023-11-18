@@ -83,6 +83,9 @@ $(RUST_APP_NAME).apk: binaries android/$(RUST_APP_NAME).keystore
 		-M android/build/AndroidManifest.xml -S android/build/res -A assets \
 		-I $(PREFIX)/android/sdk/platforms/android-29/android.jar -F $(RUST_APP_NAME).apk android/build/dex
 	mkdir -p android
+	mkdir -p android/build/lib/x86_64
+	mkdir -p android/build/lib/x86
+	mkdir -p android/build/lib/armeabi-v7a
 	cp target/x86_64-linux-android/$(MODE)/lib$(RUST_APP_NAME).so android/build/lib/x86_64/lib$(RUST_APP_NAME).so
 	cp target/i686-linux-android/$(MODE)/lib$(RUST_APP_NAME).so android/build/lib/x86/lib$(RUST_APP_NAME).so
 	cp target/armv7-linux-androideabi/$(MODE)/lib$(RUST_APP_NAME).so android/build/lib/armeabi-v7a/lib$(RUST_APP_NAME).so
