@@ -17,3 +17,9 @@ Cargo.lock
 *.xcodeproj
 
 *glue.a
+
+# VsCode things
+.vscode/*
+# Images
+*.png
+*.gif
