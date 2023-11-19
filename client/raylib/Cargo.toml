@@ -1,0 +1,23 @@
+[package]
+name = "raylib"
+version = "0.0.1"
+authors = [ "<lzebulon@archlinux>" ]
+build = "build.rs"
+links = "raylib"
+exclude = [
+        "raylib/examples/*",
+        "raylib/logo/*",
+        "raylib/projects/*"
+]
+
+[lib]
+crate-type = ["staticlib","rlib"]
+
+
+[build-dependencies]
+bindgen = "^0.68.1"
+
+[features]
+default = ["macros"]
+macros = []
+dylib = []

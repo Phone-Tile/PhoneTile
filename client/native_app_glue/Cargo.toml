@@ -1,0 +1,18 @@
+[package]
+name = "native_app_glue"
+version = "0.0.1"
+authors = [ "<lzebulon@archlinux>" ]
+build = "build.rs"
+#links = "native_app_glue"
+
+[lib]
+crate-type = ["staticlib","rlib"]
+
+
+[build-dependencies]
+bindgen = "^0.68.1"
+cc = "1.0"
+
+[features]
+macro = []
+dylib = []

@@ -1,60 +1,55 @@
 # Client
 
 
+# Installation :
 
-# Setup of this folder :
+Installer rust :
 
-Install [tools for raylib](https://github.com/raysan5/raylib/wiki/Working-on-GNU-Linux)
-
-
-
-Download [Android sdk command-line tool](https://developer.android.com/studio/#command-tools)
-
-Unzip, and put in `android/sdk`
-
-Execute :
-```bash
-cd android/sdk/cmdline-tools/bin
-./sdkmanager --update --sdk_root=../..
-./sdkmanager --install "build-tools;29.0.3" --sdk_root=../..
-./sdkmanager --install "platform-tools" --sdk_root=../..
-./sdkmanager --install "platforms;android-29" --sdk_root=../..
-cd ../../../..
-```
-Download [Android NDK, version r21e](https://dl.google.com/android/repository/android-ndk-r21e-linux-x86_64.zip)
-
-Unzip and put in `android/ndk`
-
-
-Run : 
-```bash
-cd raylib/src
-cp raylib.h ../../include
-make clean
-make PLATFORM=PLATFORM_ANDROID ANDROID_NDK=../../android/ndk ANDROID_ARCH=arm ANDROID_API_VERSION=29
-mv libraylib.a ../../lib/armeabi-v7a
-make clean
-make PLATFORM=PLATFORM_ANDROID ANDROID_NDK=../../android/ndk ANDROID_ARCH=arm64 ANDROID_API_VERSION=29
-mv libraylib.a ../../lib/arm64-v8a
-make clean
-make PLATFORM=PLATFORM_ANDROID ANDROID_NDK=../../android/ndk ANDROID_ARCH=x86 ANDROID_API_VERSION=29
-mv libraylib.a ../../lib/x86
-make clean
-make PLATFORM=PLATFORM_ANDROID ANDROID_NDK=../../android/ndk ANDROID_ARCH=x86_64 ANDROID_API_VERSION=29
-mv libraylib.a ../../lib/x86_64
-make clean
-cd ../..
+```sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-Run : 
-```bash cd android
-keytool -genkeypair -validity 1000 -dname "CN=raylib,O=Android,C=ES" -keystore raylib.keystore -storepass 'raylib' -keypass 'raylib' -alias projectKey -keyalg RSA
-cd ..
+Téléchargez les target :
+
+``` sh
+rustup target add armv7-linux-androideabi
+rustup target add x86_64-linux-android
+rustup target add i686-linux-android
+rustup target add aarch64-linux-android
 ```
 
 
-Now execute `./build.sh`
+Télécharger le ndk et sdk android.
+Mettre le ndk dans le dossier `android/ndk`
+Mettre le sdk dans le dossier `android/sdk`
+
+Quand vous êtes dans le doosier `client` (dossier où se trouve ce `README.md`),
+exporter une variable global nommé `NDK_HOME` qui pointe vers `android/ndk` :
+
+``` sh
+export NDK_HOME=$PWD/android/ndk
+```
 
 
-See [raylib doc](https://github.com/raysan5/raylib/wiki/Working-for-Android-(on-Linux))
+Et maintenant la partie un peu drôle qui permet de fonctionner.
+
+
+# Modification ANativeActivity_onCreate
+## avec la ligne de commande
+Effectuez un `make init`
+
+## A la main
+Il faut modifier le fichier `android/ndk/sources/android/native_app_glue/android_native_app_glue.c` `android/ndk/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/android/native_activity.h` 
+et modifier le nom de la fonction `ANativeActivity_onCreate` par `ANativeActivity_onCreate_C`.
+
+# Modification du compilateur
+Ah et j'oubliais, une dernière partie un peu drole c'est que les scripts pour compiler sont faux donc il faut modifier le fichier 
+`android/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/clang`, afin d'avoir `clang-17 $@`
+
+
+# Build app
+Maintenant aller dans le dossier `app` et effectuez :
+- `make app` pour créer l'apk
+- `make run` pour installer l'app directement sur votre téléphone si vous l'avez connectez avec `adb`
+
 

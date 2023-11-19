@@ -1,3 +1,5 @@
-*.apk
 
-raylib/examples/
+android/sdk
+android/ndk
+
+*.apk
