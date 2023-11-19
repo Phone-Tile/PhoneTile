@@ -11,7 +11,7 @@
 
 ABIS=armeabi-v7a x86_64
 
-PREFIX=..
+PREFIX=$(PWD)/..
 SYS = $(shell uname | tr A-Z a-z)
 NDK_HOME ?=../android/ndk
 
@@ -20,20 +20,19 @@ BUILD_TOOLS=$(PREFIX)/android/sdk/build-tools/$(SDK_VERSION)
 TOOLCHAIN=$(NDK_HOME)/toolchains/llvm/prebuilt/$(SYS)-x86_64
 NATIVE_APP_GLUE=$(NDK_HOME)/sources/android/native_app_glue
 
-FLAGS="-ffunction-sections -funwind-tables -fstack-protector-strong -fPIC -Wall \
-	-Wformat -Werror=format-security -no-canonical-prefixes \
-	-DANDROID -DPLATFORM_ANDROID -D__ANDROID_API__=29"
-
-INCLUDES="-I. -Iinclude -I../include -I$NATIVE_APP_GLUE -I$TOOLCHAIN/sysroot/usr/include"
-
-CC="$TOOLCHAIN/bin/${CCTYPE}29-clang"
 
 APP_NAME=PhoneTile
 
 RUST_APP_NAME=phone_tile
 
-MODE=debug
+MODE?=debug
 
+
+FLAGS="-ffunction-sections -funwind-tables -fstack-protector-strong -fPIC -Wall \
+	-Wformat -Werror=format-security -no-canonical-prefixes \
+	-DANDROID -DPLATFORM_ANDROID -D__ANDROID_API__=29"
+
+INCLUDES="-I. -Iinclude -I../include -I$NATIVE_APP_GLUE -I$TOOLCHAIN/sysroot/usr/include"
 
 
 .PHONY: clean
@@ -92,9 +91,9 @@ $(RUST_APP_NAME).apk: binaries android/$(RUST_APP_NAME).keystore
 
 # Add libraries to APK
 	cd android/build ; \
-	../../$(BUILD_TOOLS)/aapt add ../../$(RUST_APP_NAME).apk lib/armeabi-v7a/lib$(RUST_APP_NAME).so ; \
-	../../$(BUILD_TOOLS)/aapt add ../../$(RUST_APP_NAME).apk lib/x86_64/lib$(RUST_APP_NAME).so ; \
-	../../$(BUILD_TOOLS)/aapt add ../../$(RUST_APP_NAME).apk lib/x86/lib$(RUST_APP_NAME).so ; \
+		$(BUILD_TOOLS)/aapt add ../../$(RUST_APP_NAME).apk lib/armeabi-v7a/lib$(RUST_APP_NAME).so ; \
+		$(BUILD_TOOLS)/aapt add ../../$(RUST_APP_NAME).apk lib/x86_64/lib$(RUST_APP_NAME).so ; \
+		$(BUILD_TOOLS)/aapt add ../../$(RUST_APP_NAME).apk lib/x86/lib$(RUST_APP_NAME).so ; \
 	cd ../..
 
 	jarsigner -keystore android/$(RUST_APP_NAME).keystore -storepass $(RUST_APP_NAME) -keypass $(RUST_APP_NAME) \
