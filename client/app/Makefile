@@ -106,6 +106,12 @@ $(RUST_APP_NAME).apk: binaries android/$(RUST_APP_NAME).keystore
 run: $(RUST_APP_NAME).apk
 	$(PREFIX)/android/sdk/platform-tools/adb install -r $(RUST_APP_NAME).apk
 
+doc:
+	cargo doc --target=armv7-linux-androideabi --document-private-items
+
+doc-open:
+	cargo doc --target=armv7-linux-androideabi --document-private-items --open
+
 clean:
 	cargo clean
 
