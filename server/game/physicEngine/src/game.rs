@@ -23,7 +23,7 @@ impl Game {
             cars.push(Vehicle::new(0, i));
         }
         if map.is_empty() {
-            let dimensions = vec![(0.3,0.7),(0.5,0.8),(0.4,0.9)];
+            let dimensions = vec![(0.3, 0.7), (0.5, 0.8), (0.4, 0.9)];
             let io_map = Game::get_io_map(&dimensions);
             map = Bezier::random_map(dimensions, io_map);
         }
@@ -257,15 +257,15 @@ impl Game {
         Ok(())
     }
 
-    pub fn plot_map(&self, name: &str) -> Result<(), Box<dyn std::error::Error>>  {
+    pub fn plot_map(&self, name: &str) -> Result<(), Box<dyn std::error::Error>> {
         let (total_width, total_height) =
             self.map
                 .iter()
                 .fold((0., 0.), |(width, max_height), new_bezier| {
                     let points = new_bezier.get_points();
-                    let width_bez = f64::max(points.1.0, points.2.0); 
-                    let height_bez = f64::max(points.1.1, points.2.1); 
-                    (f64::max(width,width_bez), f64::max(max_height, height_bez))
+                    let width_bez = f64::max(points.1 .0, points.2 .0);
+                    let height_bez = f64::max(points.1 .1, points.2 .1);
+                    (f64::max(width, width_bez), f64::max(max_height, height_bez))
                 });
         println!("current {}, {}", total_width, total_height);
         let root = BitMapBackend::new(name, (1024, 768)).into_drawing_area();

@@ -1,5 +1,5 @@
-use rand::SeedableRng;
 use rand::Rng;
+use rand::SeedableRng;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct Point(pub f64, pub f64);
@@ -8,7 +8,7 @@ impl Point {
         (self.0, self.1)
     }
     pub fn symmetry(&self, rhs: Point) -> Point {
-        2**self - rhs
+        2 * *self - rhs
     }
 }
 impl<T> From<T> for Point
@@ -166,8 +166,6 @@ impl Bezier {
         dimensions: Vec<(f64, f64)>,
         io_points: Vec<((f64, f64), (f64, f64))>,
     ) -> Vec<Self> {
-        
-
         let mut rng = rand::rngs::StdRng::seed_from_u64(42);
         let mut bezier_curves = Vec::new();
 
@@ -181,7 +179,7 @@ impl Bezier {
         let mut i = 0;
         let mut phone_num = 0;
         println!("{:?}", io_points);
-        while i<io_points.len() {
+        while i < io_points.len() {
             debug_assert!(phone_num < dimensions.len());
             let (input, output) = io_points[i];
             if input.0 == output.0 {
@@ -191,7 +189,10 @@ impl Bezier {
                     // Left most phone
                     let mut control_1 = rng.gen::<(f64, f64)>();
                     let mut control_2 = rng.gen::<(f64, f64)>();
-                    println!("{:?}", (control_1.0 * dimensions[0].0, control_1.1 * dimensions[0].1));
+                    println!(
+                        "{:?}",
+                        (control_1.0 * dimensions[0].0, control_1.1 * dimensions[0].1)
+                    );
                     bezier_curves.push(Bezier::new_tuple(
                         input,
                         (control_1.0 * dimensions[0].0, control_1.1 * dimensions[0].1),
@@ -202,43 +203,60 @@ impl Bezier {
                     // Right most phone
                     let mut control_1 = rng.gen::<(f64, f64)>();
                     let mut control_2 = rng.gen::<(f64, f64)>();
-                    let len = dimensions.len()-1;
+                    let len = dimensions.len() - 1;
                     let offset = (total_height - dimensions[len].0) / 2.;
                     bezier_curves.push(Bezier::new_tuple(
                         input,
-                        (control_1.0 * dimensions[len].0+input.0, control_1.1 * dimensions[len].1+offset),
-                        (control_2.0 * dimensions[len].0+input.0, control_2.1 * dimensions[len].1+offset),
+                        (
+                            control_1.0 * dimensions[len].0 + input.0,
+                            control_1.1 * dimensions[len].1 + offset,
+                        ),
+                        (
+                            control_2.0 * dimensions[len].0 + input.0,
+                            control_2.1 * dimensions[len].1 + offset,
+                        ),
                         output,
                     ));
                 }
             } else {
                 println!("middle");
                 // middle phone, expect to have [left link bottom, path bottom, path top, left link top]
-                i+=1;
+                i += 1;
                 let (li1, li2) = io_points[i];
-                i+=1;
+                i += 1;
                 let (li3, li4) = io_points[i];
-                i+=1;
-                let (i2,o2) = io_points[i];
-                
+                i += 1;
+                let (i2, o2) = io_points[i];
+
                 let mut control_1_top = rng.gen::<(f64, f64)>();
                 let mut control_2_top = rng.gen::<(f64, f64)>();
 
                 let mut control_1_bot = rng.gen::<(f64, f64)>();
-                let mut control_2_bot= rng.gen::<(f64, f64)>();
-                
-                
+                let mut control_2_bot = rng.gen::<(f64, f64)>();
+
                 let offset = (total_height - dimensions[phone_num].0) / 2.;
                 bezier_curves.push(Bezier::new_tuple(
                     li1,
-                    (control_1_bot.0 * dimensions[phone_num].0+li1.0, control_1_bot.1 * dimensions[phone_num].1+offset),
-                    (control_2_bot.0 * dimensions[phone_num].0+li1.0, control_2_bot.1 * dimensions[phone_num].1+offset),
+                    (
+                        control_1_bot.0 * dimensions[phone_num].0 + li1.0,
+                        control_1_bot.1 * dimensions[phone_num].1 + offset,
+                    ),
+                    (
+                        control_2_bot.0 * dimensions[phone_num].0 + li1.0,
+                        control_2_bot.1 * dimensions[phone_num].1 + offset,
+                    ),
                     li2,
                 ));
                 bezier_curves.push(Bezier::new_tuple(
                     li3,
-                    (control_1_top.0 * dimensions[phone_num].0+li1.0, control_1_top.1 * dimensions[phone_num].1+offset),
-                    (control_2_top.0 * dimensions[phone_num].0+li1.0, control_2_top.1 * dimensions[phone_num].1+offset),
+                    (
+                        control_1_top.0 * dimensions[phone_num].0 + li1.0,
+                        control_1_top.1 * dimensions[phone_num].1 + offset,
+                    ),
+                    (
+                        control_2_top.0 * dimensions[phone_num].0 + li1.0,
+                        control_2_top.1 * dimensions[phone_num].1 + offset,
+                    ),
                     li4,
                 ));
             }
@@ -249,58 +267,56 @@ impl Bezier {
         phone_num = 0;
         let mut link_right = Vec::new();
         let mut link_left = Vec::new();
-        while i<io_points.len() {
+        while i < io_points.len() {
             let (input, output) = io_points[i];
             if input.1 == output.1 {
                 // temp line
-                let curve_idx = (phone_num-1)*2+1;
+                let curve_idx = (phone_num - 1) * 2 + 1;
                 // weird but ok
-                let in_control_point_bot = bezier_curves[curve_idx-1].get_points().2;
+                let in_control_point_bot = bezier_curves[curve_idx - 1].get_points().2;
                 let out_control_point_bot = bezier_curves[curve_idx].get_points().1;
-                let in_control_point = bezier_curves[curve_idx+1].get_points().2;
-                let out_control_point = 
-                    if curve_idx == 1 {
-                        // second phone, there is only one curve before
-                        bezier_curves[curve_idx-1].get_points().1
-                    } else {
-                        bezier_curves[curve_idx-2].get_points().1
-                    };
-                    link_right.push(Bezier::new(
+                let in_control_point = bezier_curves[curve_idx + 1].get_points().2;
+                let out_control_point = if curve_idx == 1 {
+                    // second phone, there is only one curve before
+                    bezier_curves[curve_idx - 1].get_points().1
+                } else {
+                    bezier_curves[curve_idx - 2].get_points().1
+                };
+                link_right.push(Bezier::new(
                     Point::from(input),
                     (Point::from(input).symmetry(in_control_point_bot)),
                     (Point::from(output).symmetry(out_control_point_bot)),
                     Point::from(output),
                 ));
-                i+=3;
+                i += 3;
                 // second link curve for top left
-                let (in2,out2) = io_points[i];
+                let (in2, out2) = io_points[i];
                 link_left.push(Bezier::new(
                     Point::from(in2),
                     (Point::from(in2).symmetry(in_control_point)),
                     (Point::from(out2).symmetry(out_control_point)),
                     Point::from(out2),
                 ));
-                
-            }   
-            i+=1;
-            phone_num += 1;         
+            }
+            i += 1;
+            phone_num += 1;
         }
-        i=1;
+        i = 1;
         let mut bez_right = Vec::new();
         let mut bez_left = Vec::new();
         let mut last_bez = bezier_curves[0].clone();
         println!("whut {:?}", bezier_curves.len());
-        while i<bezier_curves.len() {
+        while i < bezier_curves.len() {
             let points = bezier_curves[i].get_points();
-            if points.0.0 != points.3.0 {
+            if points.0 .0 != points.3 .0 {
                 // not first or last phone
                 bez_right.push(bezier_curves[i].clone());
-                i+=1;
+                i += 1;
                 bez_left.push(bezier_curves[i].clone());
             } else {
                 last_bez = bezier_curves[i].clone();
             }
-            i+=1;
+            i += 1;
         }
 
         let mut out = vec![bezier_curves[0].clone()];
@@ -380,8 +396,8 @@ mod tests {
     fn test_points() {
         let mut point1 = Point(1., 1.);
         // Symetry
-        assert_eq!(point1.symmetry(Point(2.,2.)), Point(0.,0.));
-        assert_eq!(point1.symmetry(Point(0.,0.)), Point(2.,2.));
+        assert_eq!(point1.symmetry(Point(2., 2.)), Point(0., 0.));
+        assert_eq!(point1.symmetry(Point(0., 0.)), Point(2., 2.));
         // operations on points
         let point2 = Point(0.1, 0.5);
         assert_eq!(point1 + point2, Point(1.1, 1.5));
