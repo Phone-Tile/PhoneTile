@@ -1,0 +1,12 @@
+[package]
+name = "PhoneTile"
+version = "0.0.1"
+authors = [ " <lzebulon@archlinux>" ]
+
+[lib]
+name = "phone_tile"
+crate-type = ["cdylib"]
+
+[dependencies]
+raylib = {path = "../raylib"}
+native_app_glue = {path = "../native_app_glue"}
