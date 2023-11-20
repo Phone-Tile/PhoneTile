@@ -1,3 +1,6 @@
+mod network;
+
 fn main() {
-    println!("Hello, world!");
+    let mut server = network::Server::new();
+    let _ = server.launch_server();
 }
