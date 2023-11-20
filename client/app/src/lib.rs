@@ -1,6 +1,8 @@
 use std::convert::TryInto;
 use std::ffi::c_char;
 
+mod network;
+
 extern crate raylib;
 use raylib::{
     ClearBackground, CloseWindow, Color, DrawFPS, DrawText, DrawTexture, Rectangle, SetTargetFPS,
