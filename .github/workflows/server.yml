@@ -2,7 +2,7 @@ name: Server
 
 on:
   push:
-    branches: [ "main","github-actions" ]
+    branches: [ "main" ]
     paths : "server/**"
   pull_request:
     branches: [ "main" ]
