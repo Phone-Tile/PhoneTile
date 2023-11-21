@@ -7,7 +7,7 @@ const ACC_RATE: f64 = 1.;
 const DECC_RATE: f64 = -1.2;
 const SPEED_EXCESS: f64 = 0.3;
 const FRICTION: f64 = 0.1;
-const DT: f64 = 1. / 60. * 0.01;
+const DT: f64 = 1. / 60. * 0.1;
 
 /// The game structure. `Game.map` is the continuous sequence of bezier curves forming the curcuit and `Game.cars` is the list of cars present on the circuit.
 pub struct Game {
@@ -17,26 +17,29 @@ pub struct Game {
 
 impl Game {
     /// Create a new game structure. If the map parameter is an empty list, the map is randomly created.
-    pub fn new(mut map: Vec<Bezier>, n_cars: usize) -> Self {
+    pub fn new(mut map: Vec<Bezier>, n_cars: usize, dimensions: &Vec<(f64, f64)>) -> Result<Self, Box<dyn std::error::Error>> {
         let mut cars = Vec::new();
         for i in 0..n_cars {
             cars.push(Vehicle::new(0, i));
         }
         if map.is_empty() {
-            let dimensions = vec![(0.3, 0.7), (0.5, 0.8), (0.4, 0.9)];
-            let io_map = Game::get_io_map(&dimensions);
+            let io_map = Game::get_io_map(dimensions)?;
             map = Bezier::random_map(dimensions, io_map);
         }
-        assert!(
-            map[0].get_points().0 == map[map.len() - 1].get_points().3,
-            "The given circuit is not closed. Please make sure the first and last point coincide."
-        );
-        Game { map, cars }
+        // assert!(
+        //     map[0].get_points().0 == map[map.len() - 1].get_points().3,
+        //     "The given circuit is not closed. Please make sure the first and last point coincide."
+        // );
+        Ok(Game { map, cars })
     }
 
     /// Generate the points at a third of the minimal height of two consecutive phones to build the Bezier curves. The circuit is build anticlockwise.
-    fn get_io_map(dimensions: &Vec<(f64, f64)>) -> Vec<((f64, f64), (f64, f64))> {
-        assert!(dimensions.len() > 1, "There must be at least two phones.");
+    fn get_io_map(
+        dimensions: &Vec<(f64, f64)>,
+    ) -> Result<Vec<((f64, f64), (f64, f64), usize, bool)>, Box<dyn std::error::Error>> {
+        if dimensions.len() < 2 {
+            panic!("There must be at least two phones.")
+        }
         let (_total_width, total_height) =
             dimensions
                 .iter()
@@ -49,8 +52,7 @@ impl Game {
             min_heights[i] = f64::min(old_height, new_size.1);
             old_height = new_size.1;
         });
-        min_heights.remove(0);
-        min_heights.remove(0);
+        let mut return_side = Vec::new();
         let eps = 1e-1;
         let mut curr_width = 0.;
         // io_points[i] = (input_point, output_point)
@@ -73,61 +75,83 @@ impl Game {
             // At each phone, we add the connextion between the points #i' and #o' AND the connexion with the previous (#i,#o) pair (i.e. connect #o to #i').
             //
             if i == 0 {
-                let min_height = f64::min(dimensions[0].1, dimensions[1].1);
+                let min_height = min_heights[1];
                 let offset = (total_height - min_height) / 2.;
                 io_points.push((
                     (dimensions[0].0 - eps, 2. * min_height / 3. + offset),
                     (dimensions[0].0 - eps, min_height / 3. + offset),
+                    i,
+                    false,
                 ));
             } else if i == min_heights.len() - 1 {
                 let offset = (total_height - curr_height) / 2.;
+                // last phone with [bottom, middle, top] segments.
                 io_points.push((
                     (curr_width - eps, curr_height / 3. + offset),
                     (curr_width + eps, curr_height / 3. + offset),
+                    i,
+                    true,
                 ));
                 io_points.push((
                     (curr_width + eps, curr_height / 3. + offset),
                     (curr_width + eps, 2. * curr_height / 3. + offset),
+                    i,
+                    false,
                 ));
                 io_points.push((
                     (curr_width + eps, 2. * curr_height / 3. + offset),
                     (curr_width - eps, 2. * curr_height / 3. + offset),
+                    i,
+                    true,
                 ));
             } else {
-                let offset = (total_height - curr_height) / 2.;
+                let offset_left = (total_height - curr_height) / 2.;
+                let offset_right = (total_height - min_heights[i + 1]) / 2.;
                 // bottom segment
                 io_points.push((
-                    (curr_width - eps, curr_height / 3. + offset),
-                    (curr_width + eps, curr_height / 3. + offset),
+                    (curr_width - eps, curr_height / 3. + offset_left),
+                    (curr_width + eps, curr_height / 3. + offset_left),
+                    i,
+                    true,
                 ));
                 io_points.push((
-                    (curr_width + eps, curr_height / 3. + offset),
+                    (curr_width + eps, curr_height / 3. + offset_left),
                     (
                         curr_width + dimensions[i].0 - eps,
-                        2. * min_heights[i + 1] / 3. + offset,
+                        min_heights[i + 1] / 3. + offset_right,
                     ),
+                    i,
+                    false,
                 ));
                 // top segment
-                io_points.push((
-                    (curr_width + eps, 2. * curr_height / 3. + offset),
-                    (curr_width - eps, 2. * curr_height / 3. + offset),
+                return_side.push((
+                    (curr_width + eps, 2. * curr_height / 3. + offset_left),
+                    (curr_width - eps, 2. * curr_height / 3. + offset_left),
+                    i,
+                    true,
                 ));
-                io_points.push((
+                return_side.push((
                     (
                         curr_width + dimensions[i].0 - eps,
-                        2. * curr_height / 3. + offset,
+                        2. * min_heights[i + 1] / 3. + offset_right,
                     ),
-                    (curr_width + eps, 2. * curr_height / 3. + offset),
+                    (curr_width + eps, 2. * curr_height / 3. + offset_left),
+                    i,
+                    false,
                 ));
             }
             curr_width += dimensions[i].0;
         }
-        io_points
+        return_side.reverse();
+        io_points.extend(return_side);
+        Ok(io_points)
     }
 
     fn leave_road(&mut self, car_idx: usize, direction: Point) {
         // Set the fact that the car will leave the road
-        self.cars[car_idx].is_leaving = Some(direction);
+        let pos = self.get_pos(car_idx);
+        let normalized_point = direction / direction.l2_norm() * self.cars[car_idx].speed;
+        self.cars[car_idx].is_leaving = Some(pos+normalized_point);
     }
 
     fn update_position(&mut self, car_idx: usize, accelerate: bool) {
@@ -149,8 +173,7 @@ impl Game {
             .abs()
             > SPEED_EXCESS
         {
-            let pos = self.get_pos(car_idx);
-            self.leave_road(car_idx, pos + grad * self.cars[car_idx].speed)
+            self.leave_road(car_idx, grad)
         } else {
             if new_t > 1. {
                 self.cars[car_idx].curve_index = new_curve;
@@ -202,38 +225,39 @@ impl Game {
         Ok(())
     }
 
+    #[allow(unused)]
     pub fn plot_game(&mut self, name: &str) -> Result<(), Box<dyn std::error::Error>> {
         let mut car_pos = Vec::new();
-        println!("Accelerating");
+        //println!("Accelerating");
         for _ in 0..70 {
             self.update_position(0, true);
             car_pos.push(self.get_pos(0));
-            println!("{:?}", self.get_pos(0));
+            //println!("{:?}", self.get_pos(0));
         }
-        println!("Breaking");
+        //println!("Breaking");
         for _ in 0..10 {
             self.update_position(0, false);
             car_pos.push(self.get_pos(0));
-            println!("{:?}", self.get_pos(0));
+            //println!("{:?}", self.get_pos(0));
         }
-        println!("Accelerating");
+        //println!("Accelerating");
         for _ in 0..50 {
             self.update_position(0, true);
             car_pos.push(self.get_pos(0));
-            println!("{:?}", self.get_pos(0));
+            //println!("{:?}", self.get_pos(0));
         }
-        println!("Breaking");
+        //println!("Breaking");
         for _ in 0..20 {
             self.update_position(0, false);
             car_pos.push(self.get_pos(0));
-            println!("{:?}", self.get_pos(0));
+            //println!("{:?}", self.get_pos(0));
         }
 
         let root = BitMapBackend::new(name, (1024, 768)).into_drawing_area();
         root.fill(&WHITE)?;
 
         let mut chart = ChartBuilder::on(&root)
-            .caption(format!("Game"), ("sans-serif", 50))
+            .caption("Game".to_string(), ("sans-serif", 50))
             .build_cartesian_2d(-0.01f64..1.3f64, -0.1f64..1.1f64)?;
 
         chart
@@ -257,25 +281,58 @@ impl Game {
         Ok(())
     }
 
-    pub fn plot_map(&self, name: &str) -> Result<(), Box<dyn std::error::Error>> {
+    #[allow(unused)]
+    pub fn plot_map(&self, name: &str, dimensions: &Vec<(f64,f64)>) -> Result<(), Box<dyn std::error::Error>> {
         let (total_width, total_height) =
-            self.map
+            dimensions
                 .iter()
-                .fold((0., 0.), |(width, max_height), new_bezier| {
-                    let points = new_bezier.get_points();
-                    let width_bez = f64::max(points.1 .0, points.2 .0);
-                    let height_bez = f64::max(points.1 .1, points.2 .1);
-                    (f64::max(width, width_bez), f64::max(max_height, height_bez))
+                .fold((0., 0.), |(sum_width, max_height), &new_size| {
+                    (sum_width + new_size.0, f64::max(max_height, new_size.1))
                 });
-        println!("current {}, {}", total_width, total_height);
+        
         let root = BitMapBackend::new(name, (1024, 768)).into_drawing_area();
         root.fill(&WHITE)?;
         let mut chart = ChartBuilder::on(&root)
-            .caption(format!("Game map"), ("sans-serif", 50))
-            .build_cartesian_2d(-0.01f64..total_width, -0.1f64..total_height)?;
+            .caption("Game map".to_string(), ("sans-serif", 50))
+            .set_label_area_size(LabelAreaPosition::Left, 40)
+            .set_label_area_size(LabelAreaPosition::Bottom, 40)
+            .build_cartesian_2d(-0.01f64..total_width+0.1, -0.1f64..total_height+0.1)?;
+        
+        chart.configure_mesh().draw()?;
+
         for curve in self.map.iter() {
             chart.draw_series(LineSeries::new(curve.approx_points(100), RED))?;
+            let (p1,p2,p3,p4) = curve.get_points(); 
+            chart
+                .draw_series([
+                    Circle::new(p1.into_tuple(), 4, BLUE),
+                    Circle::new(p2.into_tuple(), 4, GREEN),
+                    Circle::new(p3.into_tuple(), 4, GREEN),
+                    Circle::new(p4.into_tuple(), 4, BLUE),
+                ])?
+                .label("Car");
+            let dep1 = vec![p1.into_tuple(), p2.into_tuple()];
+            let dep2 = vec![p3.into_tuple(), p4.into_tuple()];
+            chart.draw_series(LineSeries::new(dep1.into_iter(), YELLOW))?;
+            chart.draw_series(LineSeries::new(dep2.into_iter(), YELLOW))?;
         }
+
+        let mut curr_width = 0.;
+        let offset: Vec<f64> = dimensions.iter().map(|(width, height)| {
+            (total_height - height) / 2.
+        }).collect();
+        for (i,(width, height)) in dimensions.iter().enumerate() {
+            let value = vec![
+                (curr_width, offset[i]),
+                (curr_width+width, offset[i]),
+                (curr_width+width, offset[i]+height),
+                (curr_width, offset[i]+height),
+                (curr_width, offset[i]),
+            ];
+            chart.draw_series(LineSeries::new(value.into_iter(), BLACK))?;
+            curr_width += width;
+        }
+
         root.present()?;
         println!("Map has been saved to {name}");
 
@@ -286,24 +343,28 @@ impl Game {
 #[cfg(test)]
 mod tests {
     use super::*;
+    const EPSILON: f64 = f64::EPSILON * 10.;
     #[test]
     fn test_random_map() {
         // Can generate the points as required
-        assert!(Game::get_io_map(&vec![(1., 1.), (0.3, 0.3), (1., 1.)])
+        let phone_size = vec![(1., 1.), (0.3, 0.3), (1., 1.)];
+        let io_map = Game::get_io_map(&phone_size).unwrap();
+        assert_eq!(io_map.len(), 4 * (phone_size.len() - 1));
+        assert!(io_map
             .iter()
             .zip(vec![
                 ((0.9, 0.55), (0.9, 0.45)),
                 ((0.9, 0.45), (1.1, 0.45)),
                 ((1.1, 0.45), (1.2, 0.45)),
-                ((1.2, 0.55), (1.1, 0.55)),
                 ((1.1, 0.55), (0.9, 0.55)),
+                ((1.2, 0.55), (1.1, 0.55)),
                 ((1.2, 0.45), (1.4, 0.45)),
                 ((1.4, 0.45), (1.4, 0.55)),
                 ((1.4, 0.55), (1.2, 0.55)),
             ])
-            .all(|(&(f1, f2), (f3, f4))| (f1.0 - f3.0) < f64::EPSILON
-                && (f1.1 - f3.1) < f64::EPSILON
-                && (f2.1 - f4.1) < f64::EPSILON
-                && (f2.0 - f4.0) < f64::EPSILON));
+            .all(|(&(f1, f2, _, _), (f3, f4))| (f1.0 - f3.0) < EPSILON
+                && (f1.1 - f3.1) < EPSILON
+                && (f2.1 - f4.1) < EPSILON
+                && (f2.0 - f4.0) < EPSILON));
     }
 }
