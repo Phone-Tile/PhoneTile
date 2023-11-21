@@ -3,7 +3,6 @@ use std::ffi::{c_char, c_int};
 use raylib::{raylib_str, Color, DrawRectangle, DrawText, Rectangle};
 
 use crate::ui::colors;
-use crate::game::game_select::games;
 
 pub struct Style {
     foreground: Color,
@@ -59,21 +58,24 @@ impl Draw for Button {
             }
         };
     }
+}
+
+impl Button {
     fn colision(&self) -> bool {
         // check if finger slides over button
         True;
     }
     fn click(&self) -> bool {
         // check if click on the button
-        True;
+        true;
     }
-    fn change_foreground_color(&Self, color: Color) {
+    fn change_foreground_color(&self, color: Color) {
         panic!()
         // change color
         // each color has an associated color to change into
         // want to know if I need to create an entirely new button
     }
-    fn change_background_color(&Self, color: Color) {
+    fn change_background_color(&self, color: Color) {
         panic!()
         // change color
     }
@@ -82,6 +84,9 @@ impl Draw for Button {
 pub trait Draw {
     fn draw(&self) -> ();
 }
+
+
+
 
 /*** all useful buttons ***/
 
@@ -142,7 +147,7 @@ pub const START_GAME_BUTTON : Button = Button {
 };
 
 
-
+/*  
 pub const RACER : Button = Button {
     loc: Rectangle {
         x: 100.0,
@@ -156,3 +161,4 @@ pub const RACER : Button = Button {
     },
     text: None,
 };
+*/
