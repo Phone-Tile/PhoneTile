@@ -2,10 +2,7 @@ use std::convert::TryInto;
 use std::ffi::c_char;
 
 extern crate raylib;
-use raylib::{
-    ClearBackground, CloseWindow, Color, DrawFPS, DrawText, DrawTexture, Rectangle, SetTargetFPS,
-    TraceLog, TraceLogLevel_LOG_ERROR, UnloadTexture, WindowShouldClose,
-};
+use raylib::*;
 
 use raylib::{draw, raylib_str};
 
@@ -25,12 +22,19 @@ pub extern "C" fn ANativeActivity_onCreate(
 }
 //////////////////////////////////////////////////////////////////////////
 mod ui;
+mod network;
+mod game;
 use ui::button::{Button, Draw, Style};
+use ui::button;
+use ui::colors;
+use network::{Status, get_status, create_room, join_room, lock_game, launch_game, send, receive};
+use game::cars::game::{main_game};
 
 // Main function
 #[no_mangle]
 extern "C" fn main() {
     unsafe {
+        let game_selected: Option<Game> = None;
         TraceLog(
             TraceLogLevel_LOG_ERROR.try_into().unwrap(),
             raylib_str!("Hello from phone_tile"),
@@ -47,73 +51,107 @@ extern "C" fn main() {
 
         SetTargetFPS(60);
 
-        let style = Style::new(
-            Color {
-                r: 0,
-                g: 0,
-                b: 255,
-                a: 255,
-            },
-            Color {
-                r: 255,
-                g: 255,
-                b: 255,
-                a: 255,
-            },
-        );
-
-        let button = Button::new(
-            Rectangle {
-                x: 100.0,
-                y: 200.0,
-                width: 100.0,
-                height: 100.0,
-            },
-            style,
-            Some("Un bouton".to_string()),
-        );
-
         while !WindowShouldClose() {
             draw!({
-                ClearBackground(Color {
-                    r: 0,
-                    g: 0,
-                    b: 0,
-                    a: 255,
+                ClearBackground(colors::BLACK);
+
+                match get_status() {
+                    Status::CONNECTED => {
+
+                        //TEXT : PHONE TILE
+                        button::CREATE_ROOM_BUTTON.draw();
+                        button::JOIN_ROOM_BUTTON.draw();
+
+                        if button::CREATE_ROOM_BUTTON.collision() {
+                            button::CREATE_ROOM_BUTTON.change_foreground_color();
+                        };
+                        if button::JOIN_ROOM_BUTTON.collision() {
+                            button::JOIN_ROOM_BUTTON.change_foreground_color();
+                        };
+                        if CREATE_ROOM_BUTTON.click() {
+                            // as char ???
+                            DrawText(
+                                create_room() as char,
+                                100,
+                                200,
+                                100,
+                                Color::WHITE
+                            );
+                            // next line not necessary i think
+                            // button::LOCK_GAME_BUTTON.draw()
+                        };
+                        if JOIN_ROOM_BUTTON.click() {
+                            // TYPE ID;
+                            join_room(id);
+                            //TEXT : WAITING ...
+                        }
+                    }
+                    Status::DISCONNECTED => {
+                        DrawText(
+                            "Sorry, network unsable :(",
+                            100,
+                            200,
+                            100,
+                            Color::WHITE
+                        );
+                    }
+                    Status::IN_ROOM => {
+                        // we need to differentiate host from not host
+                        // I need to ask them what they want to do
+                        // either make a variable here that says if client is host
+                        // or make two variants of status for IN_ROOM
+                        // if it is the host :
+                        button::LOCK_GAME_BUTTON.draw();
+                        if button::LOCK_GAME_BUTTON.collision() {
+                            button::LOCK_GAME_BUTTON.change_foreground_color();
+                        };
+                        if button::LOCK_GAME_BUTTON.click() {
+                            game_select();
+                        }
+                        // if it is not the host :
+                        // TEXT : waiting ...
+                    }
+                    Status::GAME_SELECT => {
+                        // if host
+                        button::RACER.draw();
+                        if button::RACER.collision() {
+                            button::RACER.change_foreground_color();
+                        };
+                        if button::RACER.click() {
+                            lock_game();
+                        }
+                    }
+                    Status::IN_LOCK_GAME(n) => {
+                        // as char ?
+                        DrawText(
+                            n as char,
+                            100,
+                            200,
+                            1000,
+                            Color::PURPLE
+                        );
+                        //if host (again) :
+                        button::START_GAME_BUTTON.draw();
+                        if button::START_GAME_BUTTON.collision() {
+                            button::START_GAME_BUTTON.change_foreground_color();
+                        };
+                        if button::START_GAME_BUTTON.click() {
+                            launch_game();
+                        }
+                    }
+                    Status::IN_GAME() => {
+                        send(data);
+                        main_game(receive(data));
+                    }
+                    }
                 });
 
-                DrawText(
-                    raylib_str!("Hello from the application"),
-                    100,
-                    100,
-                    50,
-                    Color {
-                        r: 0,
-                        g: 255,
-                        b: 0,
-                        a: 255,
-                    },
-                );
-                button.draw();
-
-                DrawTexture(
-                    tex_bunny,
-                    200,
-                    100,
-                    Color {
-                        r: 255,
-                        g: 255,
-                        b: 255,
-                        a: 255,
-                    },
-                );
-
                 DrawFPS(10, 10);
-            });
+            };
         }
 
         UnloadTexture(tex_bunny);
 
         CloseWindow()
-    }
 }
+
