@@ -11,13 +11,17 @@ impl Point {
         2 * *self - rhs
     }
 }
-impl<T> From<T> for Point
+impl<T1,T2> From<(T1,T2)> for Point
 where
-    (f64, f64): From<T>,
-    T: Copy,
+    f64: From<T1>,
+    f64: From<T2>,
+    T1: Copy,
+    T2: Copy,
+    T2: std::fmt::Debug,
+    T1: std::fmt::Debug,
 {
-    fn from(tpl: T) -> Point {
-        Point(<(f64, f64)>::from(tpl).0, <(f64, f64)>::from(tpl).0)
+    fn from(tpl: (T1,T2)) -> Point {
+        Point(f64::from(tpl.0), f64::from(tpl.1))
     }
 }
 
@@ -32,6 +36,10 @@ impl Vector {
     fn normalize(&mut self) {
         let norm = self.l2_norm();
         *self /= norm;
+    }
+    fn pseudo_normalised(&self) -> Vector {
+        let norm = self.l2_norm();
+        *self / (0.1+norm)
     }
     pub fn scalar(&self, rhs: Vector) -> f64 {
         self.0 * rhs.0 + self.1 * rhs.1
@@ -61,6 +69,13 @@ impl std::ops::Add<Point> for Point {
         Point(self.0 + other.0, self.1 + other.1)
     }
 }
+impl std::ops::Div<f64> for Point {
+    type Output = Point;
+    #[inline]
+    fn div(self, other: f64) -> Self {
+        Point(self.0 / other, self.1 / other)
+    }
+}
 impl std::ops::Sub<Point> for Point {
     type Output = Point;
     #[inline]
@@ -69,15 +84,24 @@ impl std::ops::Sub<Point> for Point {
     }
 }
 impl std::ops::AddAssign for Point {
+    #[inline]
     fn add_assign(&mut self, rhs: Point) {
         self.0 += rhs.0;
         self.1 += rhs.1;
     }
 }
 impl std::ops::DivAssign<f64> for Point {
+    #[inline]
     fn div_assign(&mut self, rhs: f64) {
         self.0 /= rhs;
         self.1 /= rhs;
+    }
+}
+impl std::ops::MulAssign<f64> for Point {
+    #[inline]
+    fn mul_assign(&mut self, rhs: f64) {
+        self.0 *= rhs;
+        self.1 *= rhs;
     }
 }
 
@@ -100,6 +124,7 @@ left_scalar_mul_impl!(u8, u16, u32, i8, i16, i32, f32, f64);
 #[derive(Clone, Debug, Default)]
 struct Gradient(Point, Point, Point);
 impl Gradient {
+    #[inline]
     fn at_time(&self, t: f64) -> Point {
         self.0 * t * t + self.1 * t + self.2
     }
@@ -151,7 +176,7 @@ impl Bezier {
 
     #[allow(unused)]
     /// io_points[i] represents the two points to link together with a Bezier curve.
-    /// In the following example, we expect io_points to be equal to [(i1,o1), (o1,i2), (i2,o2), (i4, o4), (o4, i1), (o2,i3), (i3, o3), (o3,i4)].
+    /// In the following example, we expect io_points to be equal to [(i1,o1), (o1,i2), (i2,o2), (o2,i3), (i3, o3), (o3,i4), (i4, o4), (o4, i1)].
     ///
     ///    |¯¯¯¯¯¯¯|         |¯¯¯¯¯¯¯|
     ///    |       ||¯¯¯¯¯¯¯||       |
@@ -163,11 +188,11 @@ impl Bezier {
     /// We want to link these points smoothly by using the temp curves (o_k,i_k+1) as a symmetry of the other control points.
     ///
     pub fn random_map(
-        dimensions: Vec<(f64, f64)>,
-        io_points: Vec<((f64, f64), (f64, f64))>,
+        dimensions: &Vec<(f64, f64)>,
+        io_points: Vec<((f64, f64), (f64, f64), usize, bool)>,
     ) -> Vec<Self> {
+        
         let mut rng = rand::rngs::StdRng::seed_from_u64(42);
-        let mut bezier_curves = Vec::new();
 
         let (_total_width, total_height) =
             dimensions
@@ -176,160 +201,92 @@ impl Bezier {
                     (sum_width + new_size.0, f64::max(max_height, new_size.1))
                 });
 
-        let mut i = 0;
-        let mut phone_num = 0;
-        println!("{:?}", io_points);
-        while i < io_points.len() {
-            debug_assert!(phone_num < dimensions.len());
-            let (input, output) = io_points[i];
-            if input.0 == output.0 {
-                println!("extrema");
-                // one of the extremal phone
-                if input.0 < dimensions[0].0 {
-                    // Left most phone
-                    let mut control_1 = rng.gen::<(f64, f64)>();
-                    let mut control_2 = rng.gen::<(f64, f64)>();
-                    println!(
-                        "{:?}",
-                        (control_1.0 * dimensions[0].0, control_1.1 * dimensions[0].1)
-                    );
-                    bezier_curves.push(Bezier::new_tuple(
-                        input,
-                        (control_1.0 * dimensions[0].0, control_1.1 * dimensions[0].1),
-                        (control_2.0 * dimensions[0].0, control_2.1 * dimensions[0].1),
-                        output,
+        let len = dimensions.len() - 1;
+        let eps = 1e-1;
+
+        let mut opt_bez_curves = vec![None; io_points.len()];
+        let mut widths = Vec::new();
+        dimensions.iter().fold(0., |old_width, new_size| {
+            widths.push(old_width);
+            old_width + new_size.0
+        });
+
+        for (i, (input, output, phone_idx, is_link)) in io_points.iter().enumerate() {
+            if !is_link {
+                let mut control_1 = rng.gen::<(f64, f64)>();
+                let mut control_2 = rng.gen::<(f64, f64)>();
+                if *phone_idx == 0 {
+                    // Make the car spend more time on first phone
+                    control_1.0 *= 0.5;
+                    control_2.0 *= 0.5;
+                } else if *phone_idx == len {
+                    // Make the car spend more time on last phone x = (b-a) + x*a/b
+                    control_1.0 = 0.5 * (control_1.0 + dimensions[*phone_idx].0);
+                    control_2.0 = 0.5 * (control_2.0 + dimensions[*phone_idx].0);
+                }
+
+                let offset = (total_height - dimensions[*phone_idx].1) / 2.;
+                if input.1 > dimensions[*phone_idx].1 / 2.  + offset {
+                    // returning line, try to put control point in the top part to avoid crossing.
+                    opt_bez_curves[i] = Some(Bezier::new_tuple(
+                        *input,
+                        (
+                            control_1.0 * (dimensions[*phone_idx].0 - 2.*eps) + widths[*phone_idx] + eps,
+                            control_1.1 * dimensions[*phone_idx].1 / 2. + offset + dimensions[*phone_idx].1 / 2.,
+                        ),
+                        (
+                            control_2.0 * (dimensions[*phone_idx].0 - 2.*eps) + widths[*phone_idx] + eps,
+                            control_2.1 * dimensions[*phone_idx].1 / 2. + offset + dimensions[*phone_idx].1 / 2.,
+                        ),
+                        *output,
                     ));
                 } else {
-                    // Right most phone
-                    let mut control_1 = rng.gen::<(f64, f64)>();
-                    let mut control_2 = rng.gen::<(f64, f64)>();
-                    let len = dimensions.len() - 1;
-                    let offset = (total_height - dimensions[len].0) / 2.;
-                    bezier_curves.push(Bezier::new_tuple(
-                        input,
+                    opt_bez_curves[i] = Some(Bezier::new_tuple(
+                        *input,
                         (
-                            control_1.0 * dimensions[len].0 + input.0,
-                            control_1.1 * dimensions[len].1 + offset,
+                            control_1.0 * (dimensions[*phone_idx].0 - 2.*eps) + widths[*phone_idx] + eps,
+                            control_1.1 * dimensions[*phone_idx].1 / 2. + offset,
                         ),
                         (
-                            control_2.0 * dimensions[len].0 + input.0,
-                            control_2.1 * dimensions[len].1 + offset,
+                            control_2.0 * (dimensions[*phone_idx].0 - 2.*eps) + widths[*phone_idx] + eps,
+                            control_2.1 * dimensions[*phone_idx].1 / 2. + offset,
                         ),
-                        output,
+                        *output,
                     ));
                 }
-            } else {
-                println!("middle");
-                // middle phone, expect to have [left link bottom, path bottom, path top, left link top]
-                i += 1;
-                let (li1, li2) = io_points[i];
-                i += 1;
-                let (li3, li4) = io_points[i];
-                i += 1;
-                let (i2, o2) = io_points[i];
-
-                let mut control_1_top = rng.gen::<(f64, f64)>();
-                let mut control_2_top = rng.gen::<(f64, f64)>();
-
-                let mut control_1_bot = rng.gen::<(f64, f64)>();
-                let mut control_2_bot = rng.gen::<(f64, f64)>();
-
-                let offset = (total_height - dimensions[phone_num].0) / 2.;
-                bezier_curves.push(Bezier::new_tuple(
-                    li1,
-                    (
-                        control_1_bot.0 * dimensions[phone_num].0 + li1.0,
-                        control_1_bot.1 * dimensions[phone_num].1 + offset,
-                    ),
-                    (
-                        control_2_bot.0 * dimensions[phone_num].0 + li1.0,
-                        control_2_bot.1 * dimensions[phone_num].1 + offset,
-                    ),
-                    li2,
-                ));
-                bezier_curves.push(Bezier::new_tuple(
-                    li3,
-                    (
-                        control_1_top.0 * dimensions[phone_num].0 + li1.0,
-                        control_1_top.1 * dimensions[phone_num].1 + offset,
-                    ),
-                    (
-                        control_2_top.0 * dimensions[phone_num].0 + li1.0,
-                        control_2_top.1 * dimensions[phone_num].1 + offset,
-                    ),
-                    li4,
-                ));
             }
-            i += 1;
-            phone_num += 1;
         }
-        i = 0;
-        phone_num = 0;
-        let mut link_right = Vec::new();
-        let mut link_left = Vec::new();
-        while i < io_points.len() {
-            let (input, output) = io_points[i];
-            if input.1 == output.1 {
-                // temp line
-                let curve_idx = (phone_num - 1) * 2 + 1;
-                // weird but ok
-                let in_control_point_bot = bezier_curves[curve_idx - 1].get_points().2;
-                let out_control_point_bot = bezier_curves[curve_idx].get_points().1;
-                let in_control_point = bezier_curves[curve_idx + 1].get_points().2;
-                let out_control_point = if curve_idx == 1 {
-                    // second phone, there is only one curve before
-                    bezier_curves[curve_idx - 1].get_points().1
+
+        for (i, (input, output, phone_idx, is_link)) in io_points.iter().enumerate() {
+            if *is_link {
+                let previous_curve = opt_bez_curves[i-1].as_ref().unwrap();
+                let next_curve = if i == opt_bez_curves.len() - 1 {
+                    opt_bez_curves[0].as_ref().unwrap()
                 } else {
-                    bezier_curves[curve_idx - 2].get_points().1
+                    opt_bez_curves[i+1].as_ref().unwrap()
                 };
-                link_right.push(Bezier::new(
-                    Point::from(input),
-                    (Point::from(input).symmetry(in_control_point_bot)),
-                    (Point::from(output).symmetry(out_control_point_bot)),
-                    Point::from(output),
+                let in_control_point = previous_curve.get_points().2;
+                let out_control_point = next_curve.get_points().1;
+                let input_p = Point::from(*input);
+                let output_p = Point::from(*output);
+                let mut control1 = input_p.symmetry(in_control_point);
+                control1 = (control1 - input_p).pseudo_normalised() * eps + input_p;
+                let mut control2 = output_p.symmetry(out_control_point);
+                control2 = (control2 - output_p).pseudo_normalised() * eps + output_p;
+                opt_bez_curves[i] = Some(Bezier::new_tuple(
+                    *input, 
+                    control1.into_tuple(), 
+                    control2.into_tuple(), 
+                    *output
                 ));
-                i += 3;
-                // second link curve for top left
-                let (in2, out2) = io_points[i];
-                link_left.push(Bezier::new(
-                    Point::from(in2),
-                    (Point::from(in2).symmetry(in_control_point)),
-                    (Point::from(out2).symmetry(out_control_point)),
-                    Point::from(out2),
-                ));
+            } 
+        }
+        let mut bezier_curves = Vec::new();
+        opt_bez_curves.iter().for_each(|opt_curve| {
+            bezier_curves.push(opt_curve.as_ref().unwrap().clone());
             }
-            i += 1;
-            phone_num += 1;
-        }
-        i = 1;
-        let mut bez_right = Vec::new();
-        let mut bez_left = Vec::new();
-        let mut last_bez = bezier_curves[0].clone();
-        println!("whut {:?}", bezier_curves.len());
-        while i < bezier_curves.len() {
-            let points = bezier_curves[i].get_points();
-            if points.0 .0 != points.3 .0 {
-                // not first or last phone
-                bez_right.push(bezier_curves[i].clone());
-                i += 1;
-                bez_left.push(bezier_curves[i].clone());
-            } else {
-                last_bez = bezier_curves[i].clone();
-            }
-            i += 1;
-        }
-
-        let mut out = vec![bezier_curves[0].clone()];
-        for (i, b) in bez_left.iter().enumerate() {
-            out.push(b.clone());
-            out.push(link_right[i].clone());
-        }
-        out.push(last_bez.clone());
-        for (i, b) in bez_right.iter().enumerate() {
-            out.push(b.clone());
-            out.push(link_left[i].clone());
-        }
-        out
+        );
+        bezier_curves
     }
 
     fn init_length(&mut self, num_ref_points: usize) {
@@ -344,7 +301,6 @@ impl Bezier {
             .0;
     }
 
-    #[allow(unused)]
     /// Returns the reference points of the curve [Start, Control1, Control2, End]
     pub fn get_points(&self) -> (Point, Point, Point, Point) {
         (self.p1, self.p2, self.p3, self.p4)
@@ -354,7 +310,7 @@ impl Bezier {
         self.grad.at_time(t)
     }
     #[allow(unused)]
-    pub fn get_fun<'a>(&'a self) -> impl Fn(f64) -> Point + 'a {
+    pub fn get_fun(&self) -> impl Fn(f64) -> Point + '_ {
         |t: f64| {
             let u = 1. - t;
             let t2 = t * t;
@@ -370,11 +326,10 @@ impl Bezier {
         u2 * u * self.p1 + 3. * t * u2 * self.p2 + 3. * t2 * u * self.p3 + t2 * t * self.p4
     }
 
-    pub fn approx_points(&self, num_points: usize) -> Vec<(f64, f64)> {
+    pub fn approx_points(&self, num_points: usize) -> impl Iterator<Item = (f64, f64)> + '_ {
         (0..=num_points)
             .map(|x| x as f64 / 100.0)
             .map(|x| self.compute_curve(x).into_tuple())
-            .collect()
     }
 }
 
@@ -390,7 +345,7 @@ mod tests {
             Point(1., 1.),
         );
         // All points well placed
-        assert!(bez.approx_points(100).iter().all(|(x, y)| x == y));
+        assert!(bez.approx_points(100).all(|(x, y)| x == y));
     }
     #[test]
     fn test_points() {
