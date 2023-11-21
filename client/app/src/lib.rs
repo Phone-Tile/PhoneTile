@@ -24,17 +24,21 @@ pub extern "C" fn ANativeActivity_onCreate(
 mod ui;
 mod network;
 mod game;
-use ui::button::{Button, Draw, Style};
+use ui::button::{Button, Draw, Style, JOIN_ROOM_BUTTON, CREATE_ROOM_BUTTON, START_GAME_BUTTON, LOCK_GAME_BUTTON};
 use ui::button;
 use ui::colors;
-use network::{Status, get_status, create_room, join_room, lock_game, launch_game, send, receive};
-use game::cars::game::{main_game};
+use network::network::{Status, get_status, create_room, join_room, lock_game, launch_game, send, receive};
+use game::cars::game::{move_car, draw_tracks};
+
+
+
+
 
 // Main function
 #[no_mangle]
 extern "C" fn main() {
     unsafe {
-        let game_selected: Option<Game> = None;
+        //let game_selected: Option<Game> = None;
         TraceLog(
             TraceLogLevel_LOG_ERROR.try_into().unwrap(),
             raylib_str!("Hello from phone_tile"),
@@ -82,7 +86,7 @@ extern "C" fn main() {
                         };
                         if JOIN_ROOM_BUTTON.click() {
                             // TYPE ID;
-                            join_room(id);
+                            join_room();
                             //TEXT : WAITING ...
                         }
                     }
@@ -96,10 +100,6 @@ extern "C" fn main() {
                         );
                     }
                     Status::IN_ROOM => {
-                        // we need to differentiate host from not host
-                        // I need to ask them what they want to do
-                        // either make a variable here that says if client is host
-                        // or make two variants of status for IN_ROOM
                         // if it is the host :
                         button::LOCK_GAME_BUTTON.draw();
                         if button::LOCK_GAME_BUTTON.collision() {

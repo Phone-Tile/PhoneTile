@@ -3,7 +3,7 @@ enum Status {
     DISCONNECTED,
     IN_ROOM,
     GAME_SELECT,
-    IN_LOCK_GAME(n:u8),
+    IN_LOCK_GAME(u8),
     IN_GAME
 }
 
@@ -24,16 +24,16 @@ pub fn get_waiting_list() {}
 pub fn get_design_data() {}
 
 /// while in game
-pub fn receive() -> &[u8] {}
+pub fn receive() {}
 
 
 // CLIENT TO SERVER
 
 pub fn connect() {}
 
-pub fn create_room() -> id {} // return ID
+pub fn create_room() -> Vec<u8> {} // return ID
 
-pub fn join_room(id) {} // takes ID
+pub fn join_room() {} // takes id: Vec<u8>
 
 pub fn game_select() {}
 
