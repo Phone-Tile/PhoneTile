@@ -4,24 +4,31 @@
 # @file
 # @version 0.1
 
+ifndef NDK_HOME
+	NDK_HOME_NOT_DEFINE=true
+endif
+
 NDK_HOME?=$(PWD)/android/ndk
 NDK_VERSION=r26b
 SYS = $(shell uname | tr A-Z a-z)
 
 check_init:
-ifndef $$NDK_HOME
-	$(error NDK_HOME is not set, executre : export NDK_HOME=$(PWD)/android/ndk and rerun the command)
-endif
+ifdef NDK_HOME_NOT_DEFINE
+	@echo -e "\e[1;33mWarning : NDK_HOME is not set, execute export NDK_HOME=\$$PWD/android/ndk \e[0m"
 	@echo "Attention vous êtes sur le point de modifier le ndk"
-	@echo "Vérifier bien que la variable NDK_HOME pointe sur le bon dossier"
+else
+	@echo "Attention vous êtes sur le point de modifier le ndk"
+	@echo "Vérifier bien que la variable NDK_HOME pointe sur le bon dossier, NDK_HOME=$$NDK_HOME"
 	@echo "Et non sur un NDK installé globalement sur votre système"
+endif
 	@echo -n "Êtes vous sur de vouloir modifier le ndk ? [y/N] " && read ans && [ $${ans:-N} = y ]
 
-ifdef $$NDK_HOME
+ifdef NDK_HOME_NOT_DEFINE
 init: android/sdk check_init
 else
 init: android/sdk android/ndk check_init
 endif
+	$(info Début de la modification du ndk)
 	grep "ANativeActivity_onCreate_C" $(NDK_HOME)/sources/android/native_app_glue/android_native_app_glue.c \
 	|| sed -i s/ANativeActivity_onCreate/ANativeActivity_onCreate_C/g $(NDK_HOME)/sources/android/native_app_glue/android_native_app_glue.c
 	grep "ANativeActivity_onCreate_C" $(NDK_HOME)/toolchains/llvm/prebuilt/$(SYS)-x86_64/sysroot/usr/include/android/native_activity.h \
