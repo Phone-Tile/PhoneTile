@@ -17,7 +17,7 @@ rustup target add i686-linux-android
 rustup target add aarch64-linux-android
 ```
 
-Ce projet a été testé avec Rust 1.74.0. Toute version antérieur est susceptible de ne pas fonctionner.
+> Note : Ce projet a été testé avec Rust 1.74.0. Toute version antérieur est susceptible de ne pas fonctionner.
 
 Il est également nécessaire d'avoir java d'installer. 
 > Note : cela fonctionne avec une version de java >= 17, les versions antérieur n'ont pas été testé
@@ -31,7 +31,7 @@ Puis effectuez :
 ``` sh
 make init
 ```
-Enfin exporter la variable $NDK_HOME$ qui pointe vers `android/ndk` : 
+Enfin exporter la variable `NDK_HOME` qui pointe vers `android/ndk` : 
 
 ``` sh
 export NDK_HOME=$PWD/android/ndk
@@ -56,7 +56,7 @@ cd android/sdk/cmdline-tools/bin
 cd ../../../.. \
 ```
 
-- Exportez la variable $NDK_HOME$ qui pointe vers `android/ndk` : 
+- Exportez la variable `NDK_HOME` qui pointe vers `android/ndk` : 
 
 ``` sh
 export NDK_HOME=$PWD/android/ndk
