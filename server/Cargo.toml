@@ -7,7 +7,6 @@ edition = "2021"
 
 [dependencies]
 log = "0.4.20"
-ndarray = "0.15.0"
 plotters = "0.3.3"
 rand = "0.8.5"
 tqdm = "0.6.0"
