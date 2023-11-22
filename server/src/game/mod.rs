@@ -1,5 +1,5 @@
+#![allow(unused)]
 mod bezier;
-mod game;
 mod vehicle;
 
 use crate::network::player;

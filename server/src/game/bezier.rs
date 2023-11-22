@@ -11,7 +11,7 @@ impl Point {
         2 * *self - rhs
     }
 }
-impl<T1,T2> From<(T1,T2)> for Point
+impl<T1, T2> From<(T1, T2)> for Point
 where
     f64: From<T1>,
     f64: From<T2>,
@@ -20,7 +20,7 @@ where
     T2: std::fmt::Debug,
     T1: std::fmt::Debug,
 {
-    fn from(tpl: (T1,T2)) -> Point {
+    fn from(tpl: (T1, T2)) -> Point {
         Point(f64::from(tpl.0), f64::from(tpl.1))
     }
 }
@@ -39,7 +39,7 @@ impl Vector {
     }
     fn pseudo_normalised(&self) -> Vector {
         let norm = self.l2_norm();
-        *self / (0.1+norm)
+        *self / (0.1 + norm)
     }
     pub fn scalar(&self, rhs: Vector) -> f64 {
         self.0 * rhs.0 + self.1 * rhs.1
@@ -189,11 +189,7 @@ impl Bezier {
     /// Transform this list of pairs into a list of Bezier curves with starting and ending points corresponding to each pair.
     /// The pairs (ok, ik+1) correspond to temp curves that are used to generate smooth transitions between two curves by enforcing their control point to be the symmetry of the surronding curves.
     ///
-    pub fn random_map(
-        dimensions: &Vec<(f64, f64)>,
-        io_points: Data,
-    ) -> Vec<Self> {
-        
+    pub fn random_map(dimensions: &Vec<(f64, f64)>, io_points: Data) -> Vec<Self> {
         let mut rng = rand::rngs::StdRng::seed_from_u64(42);
 
         let (_total_width, total_height) =
@@ -227,37 +223,43 @@ impl Bezier {
                     control_2.0 = 0.5 * (control_2.0 + dimensions[*phone_idx].0);
                 }
 
-                // Add offset to control points 
+                // Add offset to control points
                 let offset = (total_height - dimensions[*phone_idx].1) / 2.;
                 let mut control_1_1;
-                let mut control_1_2 ;
-                let mut control_2_1 ;
-                let mut control_2_2 ;
-                if input.1 > dimensions[*phone_idx].1 / 2.  + offset {
-                    control_1_1 = control_1.0 * (dimensions[*phone_idx].0 - 2.*eps) + widths[*phone_idx] + eps;
-                    control_1_2 = control_1.1 * dimensions[*phone_idx].1 / 2. + offset + dimensions[*phone_idx].1 / 2.;
+                let mut control_1_2;
+                let mut control_2_1;
+                let mut control_2_2;
+                if input.1 > dimensions[*phone_idx].1 / 2. + offset {
+                    control_1_1 = control_1.0 * (dimensions[*phone_idx].0 - 2. * eps)
+                        + widths[*phone_idx]
+                        + eps;
+                    control_1_2 = control_1.1 * dimensions[*phone_idx].1 / 2.
+                        + offset
+                        + dimensions[*phone_idx].1 / 2.;
                 } else {
-                    control_1_1 = control_1.0 * (dimensions[*phone_idx].0 - 2.*eps) + widths[*phone_idx] + eps;
+                    control_1_1 = control_1.0 * (dimensions[*phone_idx].0 - 2. * eps)
+                        + widths[*phone_idx]
+                        + eps;
                     control_1_2 = control_1.1 * dimensions[*phone_idx].1 / 2. + offset;
                 }
-                if output.1 > dimensions[*phone_idx].1 / 2.  + offset {
-                    control_2_1 = control_2.0 * (dimensions[*phone_idx].0 - 2.*eps) + widths[*phone_idx] + eps;
-                    control_2_2 = control_2.1 * dimensions[*phone_idx].1 / 2. + offset + dimensions[*phone_idx].1 / 2.;
+                if output.1 > dimensions[*phone_idx].1 / 2. + offset {
+                    control_2_1 = control_2.0 * (dimensions[*phone_idx].0 - 2. * eps)
+                        + widths[*phone_idx]
+                        + eps;
+                    control_2_2 = control_2.1 * dimensions[*phone_idx].1 / 2.
+                        + offset
+                        + dimensions[*phone_idx].1 / 2.;
                 } else {
-                    control_2_1 = control_2.0 * (dimensions[*phone_idx].0 - 2.*eps) + widths[*phone_idx] + eps;
+                    control_2_1 = control_2.0 * (dimensions[*phone_idx].0 - 2. * eps)
+                        + widths[*phone_idx]
+                        + eps;
                     control_2_2 = control_2.1 * dimensions[*phone_idx].1 / 2. + offset;
                 }
 
                 opt_bez_curves[i] = Some(Bezier::new_tuple(
                     *input,
-                    (
-                        control_1_1,
-                        control_1_2,
-                    ),
-                    (
-                        control_2_1,
-                        control_2_2,
-                    ),
+                    (control_1_1, control_1_2),
+                    (control_2_1, control_2_2),
                     *output,
                 ));
             }
@@ -265,11 +267,11 @@ impl Bezier {
 
         for (i, (input, output, phone_idx, is_link)) in io_points.iter().enumerate() {
             if *is_link {
-                let previous_curve = opt_bez_curves[i-1].as_ref().unwrap();
+                let previous_curve = opt_bez_curves[i - 1].as_ref().unwrap();
                 let next_curve = if i == opt_bez_curves.len() - 1 {
                     opt_bez_curves[0].as_ref().unwrap()
                 } else {
-                    opt_bez_curves[i+1].as_ref().unwrap()
+                    opt_bez_curves[i + 1].as_ref().unwrap()
                 };
                 let in_control_point = previous_curve.get_points().2;
                 let out_control_point = next_curve.get_points().1;
@@ -280,18 +282,17 @@ impl Bezier {
                 let mut control2 = output_p.symmetry(out_control_point);
                 control2 = (control2 - output_p).pseudo_normalised() * eps + output_p;
                 opt_bez_curves[i] = Some(Bezier::new_tuple(
-                    *input, 
-                    control1.into_tuple(), 
-                    control2.into_tuple(), 
-                    *output
+                    *input,
+                    control1.into_tuple(),
+                    control2.into_tuple(),
+                    *output,
                 ));
-            } 
+            }
         }
         let mut bezier_curves = Vec::new();
         opt_bez_curves.iter().for_each(|opt_curve| {
             bezier_curves.push(opt_curve.as_ref().unwrap().clone());
-            }
-        );
+        });
         bezier_curves
     }
 

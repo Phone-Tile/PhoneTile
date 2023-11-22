@@ -14,7 +14,7 @@ impl Player {
     /// Send data to the associated client
     pub fn send(&mut self, data: &[u8; packet::MAX_DATA_SIZE]) {
         self.sender
-            .send(pipe::GameMessage::data_message(data.clone()))
+            .send(pipe::GameMessage::data_message(*data))
             .unwrap();
     }
 
