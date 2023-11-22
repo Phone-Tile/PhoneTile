@@ -17,7 +17,11 @@ pub struct Game {
 
 impl Game {
     /// Create a new game structure. If the map parameter is an empty list, the map is randomly created.
-    pub fn new(mut map: Vec<Bezier>, n_cars: usize, dimensions: &Vec<(f64, f64)>) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn new(
+        mut map: Vec<Bezier>,
+        n_cars: usize,
+        dimensions: &Vec<(f64, f64)>,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         let mut cars = Vec::new();
         for i in 0..n_cars {
             cars.push(Vehicle::new(0, i));
@@ -34,9 +38,7 @@ impl Game {
     }
 
     /// Generate the points at a third of the minimal height of two consecutive phones to build the Bezier curves. The circuit is build anticlockwise.
-    fn get_io_map(
-        dimensions: &Vec<(f64, f64)>,
-    ) -> Result<Data, Box<dyn std::error::Error>> {
+    fn get_io_map(dimensions: &Vec<(f64, f64)>) -> Result<Data, Box<dyn std::error::Error>> {
         if dimensions.len() < 2 {
             panic!("There must be at least two phones.")
         }
@@ -156,7 +158,7 @@ impl Game {
         // Set the fact that the car will leave the road
         let pos = self.get_pos(car_idx);
         let normalized_point = direction / direction.l2_norm() * self.cars[car_idx].speed;
-        self.cars[car_idx].is_leaving = Some(pos+normalized_point);
+        self.cars[car_idx].is_leaving = Some(pos + normalized_point);
     }
 
     fn update_position(&mut self, car_idx: usize, accelerate: bool) {
@@ -287,27 +289,31 @@ impl Game {
     }
 
     #[allow(unused)]
-    pub fn plot_map(&self, name: &str, dimensions: &[(f64,f64)]) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn plot_map(
+        &self,
+        name: &str,
+        dimensions: &[(f64, f64)],
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let (total_width, total_height) =
             dimensions
                 .iter()
                 .fold((0., 0.), |(sum_width, max_height), &new_size| {
                     (sum_width + new_size.0, f64::max(max_height, new_size.1))
                 });
-        
+
         let root = BitMapBackend::new(name, (1024, 768)).into_drawing_area();
         root.fill(&WHITE)?;
         let mut chart = ChartBuilder::on(&root)
             .caption("Game map", ("sans-serif", 50))
             .set_label_area_size(LabelAreaPosition::Left, 40)
             .set_label_area_size(LabelAreaPosition::Bottom, 40)
-            .build_cartesian_2d(-0.01f64..total_width+0.1, -0.1f64..total_height+0.1)?;
-        
+            .build_cartesian_2d(-0.01f64..total_width + 0.1, -0.1f64..total_height + 0.1)?;
+
         chart.configure_mesh().draw()?;
 
         for curve in self.map.iter() {
             chart.draw_series(LineSeries::new(curve.approx_points(100), RED))?;
-            let (p1,p2,p3,p4) = curve.get_points(); 
+            let (p1, p2, p3, p4) = curve.get_points();
             chart
                 .draw_series([
                     Circle::new(p1.into_tuple(), 4, BLUE),
@@ -323,15 +329,16 @@ impl Game {
         }
 
         let mut curr_width = 0.;
-        let offset: Vec<f64> = dimensions.iter().map(|(width, height)| {
-            (total_height - height) / 2.
-        }).collect();
-        for (i,(width, height)) in dimensions.iter().enumerate() {
+        let offset: Vec<f64> = dimensions
+            .iter()
+            .map(|(width, height)| (total_height - height) / 2.)
+            .collect();
+        for (i, (width, height)) in dimensions.iter().enumerate() {
             let value = vec![
                 (curr_width, offset[i]),
-                (curr_width+width, offset[i]),
-                (curr_width+width, offset[i]+height),
-                (curr_width, offset[i]+height),
+                (curr_width + width, offset[i]),
+                (curr_width + width, offset[i] + height),
+                (curr_width, offset[i] + height),
                 (curr_width, offset[i]),
             ];
             chart.draw_series(LineSeries::new(value.into_iter(), BLACK))?;
@@ -378,9 +385,10 @@ mod tests {
         let phone_size = vec![(1., 1.), (0.3, 0.3), (1., 1.)];
         let game = Game::new(Vec::new(), 1, &phone_size).unwrap();
         let map = game.get_map();
-        assert!(map.iter().enumerate().all(|(i,curve)| {
-            curve.get_points().3 == map[(i+1) % map.len()].get_points().0
-        }));
+        assert!(map
+            .iter()
+            .enumerate()
+            .all(|(i, curve)| { curve.get_points().3 == map[(i + 1) % map.len()].get_points().0 }));
     }
     #[test]
     #[should_panic]

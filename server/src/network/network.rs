@@ -75,7 +75,7 @@ impl Network {
             0,
             self.session_tocken,
             0,
-            data.clone(),
+            *data,
         )
         .pack(&mut buffer);
         self.stream.write_all(&buffer).unwrap();

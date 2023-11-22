@@ -1,3 +1,4 @@
+#![allow(unused)]
 use log::{info, warn};
 use std::io::{self, Write};
 use std::net::{TcpListener, TcpStream};
@@ -8,7 +9,6 @@ use std::vec::Vec;
 
 mod connection;
 mod game;
-mod network;
 mod packet;
 mod pipe;
 pub mod player;

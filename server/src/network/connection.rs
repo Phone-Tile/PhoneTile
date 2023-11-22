@@ -57,7 +57,7 @@ impl Connection {
         main_sender: mpsc::Sender<pipe::ServerMessage>,
     ) -> Self {
         let (sender, receiver) = mpsc::channel();
-        let target: String = format!("Client {}", tocken);
+        let target: String = format!("Client {tocken}");
 
         Connection {
             status: Status::Created,

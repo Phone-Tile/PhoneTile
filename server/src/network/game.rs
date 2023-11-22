@@ -38,7 +38,7 @@ fn test_function(players: &mut Vec<player::Player>) {
 
 impl Game {
     pub fn new(receiver: mpsc::Receiver<pipe::ServerMessage>, tocken: u16) -> Game {
-        let target: String = format!("Room {}", tocken);
+        let target: String = format!("Room {tocken}");
         Game {
             tocken,
             target,
