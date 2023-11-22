@@ -1,6 +1,5 @@
 use std::convert::TryInto;
 use std::ffi::c_char;
-use std::thread;
 use std::time;
 
 extern crate raylib;
@@ -68,7 +67,6 @@ extern "C" fn main() {
         SetTargetFPS(60);
 
         while !WindowShouldClose() {
-            // thread::sleep(time::Duration::from_secs(1));
             draw!({
                 ClearBackground(colors::BLACK);
 
