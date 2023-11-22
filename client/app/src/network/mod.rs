@@ -2,7 +2,7 @@ use std::net::TcpStream;
 use std::io::{Write, Read, ErrorKind};
 use std::{thread, time};
 
-mod packet;
+pub mod packet;
 
 /// All of those functions are completely non-blocking
 
@@ -11,6 +11,7 @@ pub enum Status {
     Connected,
     Disconnected,
     InRoom,
+    SelectedGame,
     InLockRoom(u8),
     InGame,
 }
@@ -37,7 +38,7 @@ impl Network {
         }
         Ok(())
     }
-
+    
     /// Connect to the server, you must do this action BEFORE ANYTHING ELSE
     pub fn connect(
         physical_height: f32,
@@ -46,6 +47,7 @@ impl Network {
         window_width: u32) -> Self {
         match TcpStream::connect("10.0.2.2:8888") {
             Ok(stream) => {
+                stream.set_nonblocking(true);
                 let mut network = Network {
                     stream,
                     session_tocken: 0,
@@ -122,7 +124,7 @@ impl Network {
     /// Get the current status of the network
     pub fn get_status(&mut self) -> Status {
         match self.status {
-            Status::InRoom => {
+            Status::SelectedGame => {
                 let mut buffer = [0_u8; packet::MAX_DATA_SIZE+packet::HEADER_SIZE];
                 match self.stream.read_exact(&mut buffer) {
                     Ok(_) => {
@@ -168,6 +170,10 @@ impl Network {
         self.status = Status::InGame;
 
         self.stream.write_all(&buffer)
+    }
+
+    pub fn game_select(&mut self) {
+        self.status = Status::SelectedGame;
     }
 
     fn block_read_exact(&mut self, buf: &mut [u8]) {

@@ -19,12 +19,20 @@ pub struct Game {
 fn test_function(players: &mut Vec<player::Player>) {
     let mut buffer = [0_u8; packet::MAX_DATA_SIZE];
     loop {
-        for p in players.iter_mut() {
-            if p.recv(&mut buffer) {
-                p.send(&buffer);
+        // let mut p1 = &mut players[0];
+        // let mut p2 = &mut players[1];
+        if players.len() > 1 {
+            if players[0].recv(&mut buffer){
+                // println!("{buffer:?}");
+                players[1].send(&buffer);
             }
+            if players[1].recv(&mut buffer){
+                players[0].send(&buffer);
+            }
+        } else {
+            let _ = players[0].recv(&mut buffer);
         }
-        thread::sleep(time::Duration::from_millis(100));
+        thread::sleep(time::Duration::from_millis(10));
     }
 }
 
