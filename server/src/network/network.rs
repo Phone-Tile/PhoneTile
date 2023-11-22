@@ -1,6 +1,6 @@
-use std::net::TcpStream;
 use super::packet;
-use std::io::{Write, Read, ErrorKind};
+use std::io::{ErrorKind, Read, Write};
+use std::net::TcpStream;
 use std::{thread, time};
 
 /// All of those functions are completely non-blocking
@@ -23,15 +23,22 @@ pub struct Network {
 
 impl Network {
     fn init_handshake(&mut self) -> Result<(), std::io::Error> {
-        let mut buffer = [0_u8; packet::MAX_DATA_SIZE+packet::HEADER_SIZE];
-        packet::Packet::new(packet::Flag::Init as u8, 0, 0, 0, [0_u8; packet::MAX_DATA_SIZE]).pack(&mut buffer);
+        let mut buffer = [0_u8; packet::MAX_DATA_SIZE + packet::HEADER_SIZE];
+        packet::Packet::new(
+            packet::Flag::Init as u8,
+            0,
+            0,
+            0,
+            [0_u8; packet::MAX_DATA_SIZE],
+        )
+        .pack(&mut buffer);
         self.stream.write_all(&buffer).unwrap();
 
         self.block_read_exact(&mut buffer);
         match packet::Packet::unpack(&buffer) {
             Ok(packet) => {
                 self.session_tocken = packet.session;
-            },
+            }
             Err(_) => panic!("Not well formed packet"),
         }
         Ok(())
@@ -42,7 +49,8 @@ impl Network {
         physical_height: f32,
         physical_width: f32,
         window_height: u32,
-        window_width: u32) -> Self {
+        window_width: u32,
+    ) -> Self {
         match TcpStream::connect("127.0.0.1:8888") {
             Ok(stream) => {
                 let mut network = Network {
@@ -53,7 +61,7 @@ impl Network {
                 };
                 network.init_handshake().unwrap();
                 network
-            },
+            }
             Err(_) => panic!("Unabled to connect to server !"),
         }
     }
@@ -62,10 +70,17 @@ impl Network {
     /// If you use this function outisde of a game, this will simply discard the message
     pub fn send(&mut self, data: &[u8; packet::MAX_DATA_SIZE]) {
         let mut buffer = [0_u8; packet::BUFFER_SIZE];
-        packet::Packet::new(packet::Flag::Transmit as u8, 0, self.session_tocken, 0, data.clone()).pack(&mut buffer);
+        packet::Packet::new(
+            packet::Flag::Transmit as u8,
+            0,
+            self.session_tocken,
+            0,
+            data.clone(),
+        )
+        .pack(&mut buffer);
         self.stream.write_all(&buffer).unwrap();
     }
-    
+
     /// Receive data from the server ; this action can only be done in game
     /// It return the amount of data read
     pub fn recv(&mut self, buffer: &mut [u8; packet::MAX_DATA_SIZE]) -> bool {
@@ -74,7 +89,7 @@ impl Network {
             Ok(_) => {
                 buffer.copy_from_slice(&packet::Packet::unpack(&internal_buffer).unwrap().data);
                 true
-            },
+            }
             Err(e) if e.kind() == ErrorKind::WouldBlock => false,
             Err(e) => panic!("{e}"),
         }
@@ -83,8 +98,14 @@ impl Network {
     /// Create a room and send back the ID of the room in order for the other
     /// to connect themselves to it
     pub fn create_room(&mut self) -> Result<u16, std::io::Error> {
-        let mut buffer = [0_u8; packet::MAX_DATA_SIZE+packet::HEADER_SIZE];
-        let packet_room_creation = packet::Packet::new(packet::Flag::Create as u8, 0, self.session_tocken, 0, [0_u8; packet::MAX_DATA_SIZE]);
+        let mut buffer = [0_u8; packet::MAX_DATA_SIZE + packet::HEADER_SIZE];
+        let packet_room_creation = packet::Packet::new(
+            packet::Flag::Create as u8,
+            0,
+            self.session_tocken,
+            0,
+            [0_u8; packet::MAX_DATA_SIZE],
+        );
         packet_room_creation.pack(&mut buffer);
 
         self.stream.write_all(&buffer)?;
@@ -94,15 +115,21 @@ impl Network {
                 self.room_tocken = packet.room;
                 self.status = Status::InRoom;
                 Ok(packet.room)
-            },
+            }
             Err(_) => panic!("Not well formed packet"),
         }
     }
 
     /// Join a room with the given room ID
     pub fn join_room(&mut self, room_tocken: u16) -> Result<(), std::io::Error> {
-        let mut buffer = [0_u8; packet::MAX_DATA_SIZE+packet::HEADER_SIZE];
-        let packet_room_creation = packet::Packet::new(packet::Flag::Join as u8, 0, self.session_tocken, room_tocken, [0_u8; packet::MAX_DATA_SIZE]);
+        let mut buffer = [0_u8; packet::MAX_DATA_SIZE + packet::HEADER_SIZE];
+        let packet_room_creation = packet::Packet::new(
+            packet::Flag::Join as u8,
+            0,
+            self.session_tocken,
+            room_tocken,
+            [0_u8; packet::MAX_DATA_SIZE],
+        );
         packet_room_creation.pack(&mut buffer);
 
         self.stream.write_all(&buffer)?;
@@ -111,7 +138,7 @@ impl Network {
             Ok(packet) => {
                 self.room_tocken = packet.room;
                 self.status = Status::InRoom;
-            },
+            }
             Err(_) => panic!("Not well formed packet"),
         }
 
@@ -122,28 +149,28 @@ impl Network {
     pub fn get_status(&mut self) -> Status {
         match self.status {
             Status::InRoom => {
-                let mut buffer = [0_u8; packet::MAX_DATA_SIZE+packet::HEADER_SIZE];
+                let mut buffer = [0_u8; packet::MAX_DATA_SIZE + packet::HEADER_SIZE];
                 match self.stream.read_exact(&mut buffer) {
                     Ok(_) => {
                         let packet = packet::Packet::unpack(&buffer).unwrap();
                         self.status = Status::InLockRoom(packet.data[0]);
                         self.status.clone()
-                    },
+                    }
                     Err(e) if e.kind() == ErrorKind::WouldBlock => self.status.clone(),
                     Err(e) => panic!("{e}"),
                 }
-            },
+            }
             Status::InLockRoom(_) => {
-                let mut buffer = [0_u8; packet::MAX_DATA_SIZE+packet::HEADER_SIZE];
+                let mut buffer = [0_u8; packet::MAX_DATA_SIZE + packet::HEADER_SIZE];
                 match self.stream.read_exact(&mut buffer) {
                     Ok(_) => {
                         self.status = Status::InGame;
                         self.status.clone()
-                    },
+                    }
                     Err(e) if e.kind() == ErrorKind::WouldBlock => self.status.clone(),
                     Err(e) => panic!("{e}"),
                 }
-            },
+            }
             _ => self.status.clone(),
         }
     }
@@ -152,8 +179,15 @@ impl Network {
     /// The position of each user is given from this point when the get_status is triggered
     /// THIS FUNCTION WILL WORK ONLY IF create_room HAS BEEN CALLED BEFORE THAT
     pub fn lock_room(&mut self) -> Result<(), std::io::Error> {
-        let mut buffer = [0_u8; packet::MAX_DATA_SIZE+packet::HEADER_SIZE];
-        packet::Packet::new(0, 0, self.session_tocken, self.room_tocken, [0_u8; packet::MAX_DATA_SIZE]).pack(&mut buffer);
+        let mut buffer = [0_u8; packet::MAX_DATA_SIZE + packet::HEADER_SIZE];
+        packet::Packet::new(
+            0,
+            0,
+            self.session_tocken,
+            self.room_tocken,
+            [0_u8; packet::MAX_DATA_SIZE],
+        )
+        .pack(&mut buffer);
 
         self.stream.write_all(&buffer)
     }
@@ -161,8 +195,15 @@ impl Network {
     /// Launch the actual game
     /// THIS FUNCTION WILL WORK ONLY IF create_room HAS BEEN CALLED BEFORE THAT
     pub fn launch_game(&mut self) -> Result<(), std::io::Error> {
-        let mut buffer = [0_u8; packet::MAX_DATA_SIZE+packet::HEADER_SIZE];
-        packet::Packet::new(packet::Flag::Launch as u8, 0, self.session_tocken, self.room_tocken, [0_u8; packet::MAX_DATA_SIZE]).pack(&mut buffer);
+        let mut buffer = [0_u8; packet::MAX_DATA_SIZE + packet::HEADER_SIZE];
+        packet::Packet::new(
+            packet::Flag::Launch as u8,
+            0,
+            self.session_tocken,
+            self.room_tocken,
+            [0_u8; packet::MAX_DATA_SIZE],
+        )
+        .pack(&mut buffer);
 
         self.status = Status::InGame;
 
@@ -173,7 +214,7 @@ impl Network {
         loop {
             match self.stream.read_exact(buf) {
                 Ok(_) => return,
-                Err(e) if e.kind() == ErrorKind::WouldBlock => {},
+                Err(e) if e.kind() == ErrorKind::WouldBlock => {}
                 Err(e) => panic!("{e}"),
             }
             thread::sleep(time::Duration::from_millis(10));

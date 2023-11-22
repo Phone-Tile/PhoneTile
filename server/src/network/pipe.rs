@@ -4,7 +4,7 @@ use super::packet;
 
 pub enum ServerMessageFlag {
     Create,
-    Join
+    Join,
 }
 
 pub struct ServerMessage {
@@ -15,7 +15,12 @@ pub struct ServerMessage {
 }
 
 impl ServerMessage {
-    pub fn new(usr_tocken: u16, flag: ServerMessageFlag, room_tocken: u16, sender: mpsc::Sender<GameMessage>) -> ServerMessage {
+    pub fn new(
+        usr_tocken: u16,
+        flag: ServerMessageFlag,
+        room_tocken: u16,
+        sender: mpsc::Sender<GameMessage>,
+    ) -> ServerMessage {
         ServerMessage {
             session_tocken: usr_tocken,
             flag,

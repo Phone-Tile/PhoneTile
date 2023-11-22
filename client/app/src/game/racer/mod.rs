@@ -1,6 +1,6 @@
+use crate::network;
 use std::convert::TryInto;
 use std::ffi::{c_float, c_int};
-use crate::network;
 
 use c_char;
 
@@ -294,7 +294,7 @@ pub fn main_game(network: &mut network::Network) {
                 data[i] = track_seg[i];
             }
             for i in 0..4 {
-                data[i+1] = track_t[i];
+                data[i + 1] = track_t[i];
             }
             network.send(&data);
 
@@ -306,7 +306,7 @@ pub fn main_game(network: &mut network::Network) {
                 car2.track_segment = u8::from_le_bytes(track_seg);
                 let mut track_t = [0_u8; 4];
                 for i in 0..4 {
-                    track_t[i] = data[i+1];
+                    track_t[i] = data[i + 1];
                 }
                 car2.track_t = c_float::from_le_bytes(track_t);
                 car2.new_pos();

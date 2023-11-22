@@ -1,10 +1,10 @@
-use std::time::SystemTime;
 use std::convert::Into;
 use std::convert::TryFrom;
+use std::time::SystemTime;
 
 pub const HEADER_SIZE: usize = 8;
 pub const MAX_DATA_SIZE: usize = 2040;
-pub const BUFFER_SIZE: usize = HEADER_SIZE+MAX_DATA_SIZE;
+pub const BUFFER_SIZE: usize = HEADER_SIZE + MAX_DATA_SIZE;
 
 #[derive(Clone, Copy)]
 pub enum Flag {
@@ -81,16 +81,16 @@ impl Packet {
             session,
             room,
             data,
-            processed_time: SystemTime::now()
+            processed_time: SystemTime::now(),
         }
     }
-    
+
     fn unpack_u16(data: &[u8]) -> u16 {
         ((data[0] as u16) << 8) + (data[1] as u16)
     }
 
     fn pack_u16(int: u16, slice: &mut [u8]) {
-        slice[0] = u8::try_from(int>>8).unwrap();
+        slice[0] = u8::try_from(int >> 8).unwrap();
         slice[1] = u8::try_from(int & (0x00ff_u16)).unwrap();
     }
 
@@ -99,7 +99,7 @@ impl Packet {
         //     return Err("non-standard packet : packet size doesn't fit header info");
         // }
         let mut data = [0_u8; MAX_DATA_SIZE];
-        data.clone_from_slice(&packet[8..MAX_DATA_SIZE+HEADER_SIZE]);
+        data.clone_from_slice(&packet[8..MAX_DATA_SIZE + HEADER_SIZE]);
 
         Ok(Packet {
             version: Version::V0,
@@ -110,7 +110,7 @@ impl Packet {
             room: Packet::unpack_u16(&packet[6..8]),
             data,
 
-            processed_time: SystemTime::now()
+            processed_time: SystemTime::now(),
         })
     }
 
@@ -123,7 +123,7 @@ impl Packet {
     }
 
     /// Pack in buffer the packet
-    pub fn pack(&self, packet: &mut [u8; MAX_DATA_SIZE+HEADER_SIZE]) {
+    pub fn pack(&self, packet: &mut [u8; MAX_DATA_SIZE + HEADER_SIZE]) {
         packet[0] = self.version.into();
         packet[1] = self.flag;
         packet[2] = self.sync;
@@ -140,7 +140,10 @@ impl Packet {
 
     /// Produce a log in stdout
     pub fn log_packet(self) {
-        println!("[ \033[32m INFO \033[97m ] Packet processed at {:?} :", self.processed_time);
+        println!(
+            "[ \033[32m INFO \033[97m ] Packet processed at {:?} :",
+            self.processed_time
+        );
         println!("\t Version : {:?}", self.version as u8);
         println!("\t Size : {:?}", self.size + HEADER_SIZE);
         println!("\t Session : {:?}", self.session);

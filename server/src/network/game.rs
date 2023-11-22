@@ -1,10 +1,10 @@
 use log::info;
 
-use super::{pipe, packet};
+use super::player;
+use super::{packet, pipe};
 use std::sync::mpsc::{self, TryRecvError};
 use std::thread;
 use std::time;
-use super::player;
 
 pub struct Game {
     tocken: u16,
@@ -22,11 +22,11 @@ fn test_function(players: &mut Vec<player::Player>) {
         // let mut p1 = &mut players[0];
         // let mut p2 = &mut players[1];
         if players.len() > 1 {
-            if players[0].recv(&mut buffer){
+            if players[0].recv(&mut buffer) {
                 // println!("{buffer:?}");
                 players[1].send(&buffer);
             }
-            if players[1].recv(&mut buffer){
+            if players[1].recv(&mut buffer) {
                 players[0].send(&buffer);
             }
         } else {
@@ -52,7 +52,7 @@ impl Game {
             Ok(message) => {
                 self.add_player(message.sender);
                 info!(target: self.target.as_str(), "Client {} joined the room", message.session_tocken);
-            },
+            }
             Err(TryRecvError::Empty) => (),
             Err(_) => panic!("Pipe with the server broke unexpectedly"),
         }
@@ -72,7 +72,10 @@ impl Game {
         let mut index = 0;
         while index < self.players.len() {
             self.players[index].rank = index as u8;
-            self.players[index].sender.send(pipe::GameMessage::lock_message(index as u8)).unwrap();
+            self.players[index]
+                .sender
+                .send(pipe::GameMessage::lock_message(index as u8))
+                .unwrap();
             index += 1;
         }
     }
@@ -106,7 +109,7 @@ impl Game {
                 info!(target: self.target.as_str(), "Room locked");
                 self.assign_rank();
                 self.launch_game();
-                
+
                 is_game_on = false;
             }
 
@@ -116,13 +119,13 @@ impl Game {
 
     fn add_player(&mut self, p_sender: mpsc::Sender<pipe::GameMessage>) {
         let (sender, receiver) = mpsc::channel();
-        p_sender.send(pipe::GameMessage::init_message(sender, self.tocken)).unwrap();
-        self.players.push(
-            player::Player {
-                sender: p_sender,
-                receiver,
-                rank: 0,
-            }
-        );
+        p_sender
+            .send(pipe::GameMessage::init_message(sender, self.tocken))
+            .unwrap();
+        self.players.push(player::Player {
+            sender: p_sender,
+            receiver,
+            rank: 0,
+        });
     }
 }
