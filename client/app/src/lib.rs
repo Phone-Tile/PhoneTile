@@ -32,6 +32,7 @@ use ui::button::{Button, Draw, Style};
 // Main function
 #[no_mangle]
 extern "C" fn main() {
+    let network = network::Network::connect(1., 1., 1, 1);
     unsafe {
         TraceLog(
             TraceLogLevel_LOG_ERROR.try_into().unwrap(),
