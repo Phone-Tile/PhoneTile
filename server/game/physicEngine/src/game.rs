@@ -7,7 +7,7 @@ const ACC_RATE: f64 = 1.;
 const DECC_RATE: f64 = -1.2;
 const SPEED_EXCESS: f64 = 0.3;
 const FRICTION: f64 = 0.1;
-const DT: f64 = 1. / 60. * 0.1;
+const DT: f64 = 1. / 60. * 1.; // * 0.01 mieux
 
 /// The game structure. `Game.map` is the continuous sequence of bezier curves forming the curcuit and `Game.cars` is the list of cars present on the circuit.
 pub struct Game {
@@ -36,7 +36,7 @@ impl Game {
     /// Generate the points at a third of the minimal height of two consecutive phones to build the Bezier curves. The circuit is build anticlockwise.
     fn get_io_map(
         dimensions: &Vec<(f64, f64)>,
-    ) -> Result<Vec<((f64, f64), (f64, f64), usize, bool)>, Box<dyn std::error::Error>> {
+    ) -> Result<Data, Box<dyn std::error::Error>> {
         if dimensions.len() < 2 {
             panic!("There must be at least two phones.")
         }
@@ -145,6 +145,11 @@ impl Game {
         return_side.reverse();
         io_points.extend(return_side);
         Ok(io_points)
+    }
+
+    #[allow(unused)]
+    fn get_map(&self) -> Vec<Bezier> {
+        self.map.clone()
     }
 
     fn leave_road(&mut self, car_idx: usize, direction: Point) {
@@ -257,7 +262,7 @@ impl Game {
         root.fill(&WHITE)?;
 
         let mut chart = ChartBuilder::on(&root)
-            .caption("Game".to_string(), ("sans-serif", 50))
+            .caption("Game", ("sans-serif", 50))
             .build_cartesian_2d(-0.01f64..1.3f64, -0.1f64..1.1f64)?;
 
         chart
@@ -282,7 +287,7 @@ impl Game {
     }
 
     #[allow(unused)]
-    pub fn plot_map(&self, name: &str, dimensions: &Vec<(f64,f64)>) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn plot_map(&self, name: &str, dimensions: &[(f64,f64)]) -> Result<(), Box<dyn std::error::Error>> {
         let (total_width, total_height) =
             dimensions
                 .iter()
@@ -293,7 +298,7 @@ impl Game {
         let root = BitMapBackend::new(name, (1024, 768)).into_drawing_area();
         root.fill(&WHITE)?;
         let mut chart = ChartBuilder::on(&root)
-            .caption("Game map".to_string(), ("sans-serif", 50))
+            .caption("Game map", ("sans-serif", 50))
             .set_label_area_size(LabelAreaPosition::Left, 40)
             .set_label_area_size(LabelAreaPosition::Bottom, 40)
             .build_cartesian_2d(-0.01f64..total_width+0.1, -0.1f64..total_height+0.1)?;
@@ -345,7 +350,7 @@ mod tests {
     use super::*;
     const EPSILON: f64 = f64::EPSILON * 10.;
     #[test]
-    fn test_random_map() {
+    fn test_io_map() {
         // Can generate the points as required
         let phone_size = vec![(1., 1.), (0.3, 0.3), (1., 1.)];
         let io_map = Game::get_io_map(&phone_size).unwrap();
@@ -356,15 +361,31 @@ mod tests {
                 ((0.9, 0.55), (0.9, 0.45)),
                 ((0.9, 0.45), (1.1, 0.45)),
                 ((1.1, 0.45), (1.2, 0.45)),
-                ((1.1, 0.55), (0.9, 0.55)),
-                ((1.2, 0.55), (1.1, 0.55)),
                 ((1.2, 0.45), (1.4, 0.45)),
                 ((1.4, 0.45), (1.4, 0.55)),
                 ((1.4, 0.55), (1.2, 0.55)),
+                ((1.2, 0.55), (1.1, 0.55)),
+                ((1.1, 0.55), (0.9, 0.55)),
             ])
             .all(|(&(f1, f2, _, _), (f3, f4))| (f1.0 - f3.0) < EPSILON
                 && (f1.1 - f3.1) < EPSILON
                 && (f2.1 - f4.1) < EPSILON
                 && (f2.0 - f4.0) < EPSILON));
+    }
+
+    #[test]
+    fn test_random_map_bezier() {
+        let phone_size = vec![(1., 1.), (0.3, 0.3), (1., 1.)];
+        let game = Game::new(Vec::new(), 1, &phone_size).unwrap();
+        let map = game.get_map();
+        assert!(map.iter().enumerate().all(|(i,curve)| {
+            curve.get_points().3 == map[(i+1) % map.len()].get_points().0
+        }));
+    }
+    #[test]
+    #[should_panic]
+    fn test_panic_one_phone() {
+        let phone_size = vec![(1., 1.)];
+        Game::new(Vec::new(), 1, &phone_size).unwrap();
     }
 }

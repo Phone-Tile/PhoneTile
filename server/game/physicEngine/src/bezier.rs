@@ -120,6 +120,8 @@ macro_rules! left_scalar_mul_impl(
 
 left_scalar_mul_impl!(u8, u16, u32, i8, i16, i32, f32, f64);
 
+pub type Data = Vec<((f64, f64), (f64, f64), usize, bool)>;
+
 /// The points of the gradient of a Bezier curve. `Gradient(A,B,C)` represents the function At^2 + Bt + C that can be computed via the method `gradient.at_time(t)`
 #[derive(Clone, Debug, Default)]
 struct Gradient(Point, Point, Point);
@@ -132,7 +134,6 @@ impl Gradient {
 
 /// The Bezier curve is {(1-t)^3P1 + 3t(1-t)^2P2 + 3t^2(2-t)P3 + t^3P4 | t in [0,1]}. This value can be computed using the following method: `bezier.compute_curve()`.
 /// It can also represent lower rank Bezier curves by choosing parameters points P2 and P3 so that they points to where the parameter point would be in a rank 2 and to the other reference point for a rank 1.
-///
 #[derive(Debug, Clone, Default)]
 pub struct Bezier {
     p1: Point,
@@ -185,11 +186,12 @@ impl Bezier {
     ///    |       ||___O___||       |
     ///    |___O___|         |___O___|
     ///
-    /// We want to link these points smoothly by using the temp curves (o_k,i_k+1) as a symmetry of the other control points.
+    /// Transform this list of pairs into a list of Bezier curves with starting and ending points corresponding to each pair.
+    /// The pairs (ok, ik+1) correspond to temp curves that are used to generate smooth transitions between two curves by enforcing their control point to be the symmetry of the surronding curves.
     ///
     pub fn random_map(
         dimensions: &Vec<(f64, f64)>,
-        io_points: Vec<((f64, f64), (f64, f64), usize, bool)>,
+        io_points: Data,
     ) -> Vec<Self> {
         
         let mut rng = rand::rngs::StdRng::seed_from_u64(42);
@@ -225,35 +227,39 @@ impl Bezier {
                     control_2.0 = 0.5 * (control_2.0 + dimensions[*phone_idx].0);
                 }
 
+                // Add offset to control points 
                 let offset = (total_height - dimensions[*phone_idx].1) / 2.;
+                let mut control_1_1;
+                let mut control_1_2 ;
+                let mut control_2_1 ;
+                let mut control_2_2 ;
                 if input.1 > dimensions[*phone_idx].1 / 2.  + offset {
-                    // returning line, try to put control point in the top part to avoid crossing.
-                    opt_bez_curves[i] = Some(Bezier::new_tuple(
-                        *input,
-                        (
-                            control_1.0 * (dimensions[*phone_idx].0 - 2.*eps) + widths[*phone_idx] + eps,
-                            control_1.1 * dimensions[*phone_idx].1 / 2. + offset + dimensions[*phone_idx].1 / 2.,
-                        ),
-                        (
-                            control_2.0 * (dimensions[*phone_idx].0 - 2.*eps) + widths[*phone_idx] + eps,
-                            control_2.1 * dimensions[*phone_idx].1 / 2. + offset + dimensions[*phone_idx].1 / 2.,
-                        ),
-                        *output,
-                    ));
+                    control_1_1 = control_1.0 * (dimensions[*phone_idx].0 - 2.*eps) + widths[*phone_idx] + eps;
+                    control_1_2 = control_1.1 * dimensions[*phone_idx].1 / 2. + offset + dimensions[*phone_idx].1 / 2.;
                 } else {
-                    opt_bez_curves[i] = Some(Bezier::new_tuple(
-                        *input,
-                        (
-                            control_1.0 * (dimensions[*phone_idx].0 - 2.*eps) + widths[*phone_idx] + eps,
-                            control_1.1 * dimensions[*phone_idx].1 / 2. + offset,
-                        ),
-                        (
-                            control_2.0 * (dimensions[*phone_idx].0 - 2.*eps) + widths[*phone_idx] + eps,
-                            control_2.1 * dimensions[*phone_idx].1 / 2. + offset,
-                        ),
-                        *output,
-                    ));
+                    control_1_1 = control_1.0 * (dimensions[*phone_idx].0 - 2.*eps) + widths[*phone_idx] + eps;
+                    control_1_2 = control_1.1 * dimensions[*phone_idx].1 / 2. + offset;
                 }
+                if output.1 > dimensions[*phone_idx].1 / 2.  + offset {
+                    control_2_1 = control_2.0 * (dimensions[*phone_idx].0 - 2.*eps) + widths[*phone_idx] + eps;
+                    control_2_2 = control_2.1 * dimensions[*phone_idx].1 / 2. + offset + dimensions[*phone_idx].1 / 2.;
+                } else {
+                    control_2_1 = control_2.0 * (dimensions[*phone_idx].0 - 2.*eps) + widths[*phone_idx] + eps;
+                    control_2_2 = control_2.1 * dimensions[*phone_idx].1 / 2. + offset;
+                }
+
+                opt_bez_curves[i] = Some(Bezier::new_tuple(
+                    *input,
+                    (
+                        control_1_1,
+                        control_1_2,
+                    ),
+                    (
+                        control_2_1,
+                        control_2_2,
+                    ),
+                    *output,
+                ));
             }
         }
 
