@@ -70,8 +70,11 @@ impl Button {
         unsafe {
             if raylib::IsMouseButtonPressed(raylib::MouseButton_MOUSE_BUTTON_LEFT as i32) {
                 let mouse_pos = raylib::GetMousePosition();
-                if self.loc.x < mouse_pos.x && mouse_pos.x < self.loc.x+self.loc.width
-                    && self.loc.y < mouse_pos.y && mouse_pos.y < self.loc.y+self.loc.height {
+                if self.loc.x < mouse_pos.x
+                    && mouse_pos.x < self.loc.x + self.loc.width
+                    && self.loc.y < mouse_pos.y
+                    && mouse_pos.y < self.loc.y + self.loc.height
+                {
                     return true;
                 }
             }
@@ -94,12 +97,9 @@ pub trait Draw {
     fn draw(&self) -> ();
 }
 
-
-
-
 /*** all useful buttons ***/
 
-pub const CREATE_ROOM_BUTTON : Button = Button {
+pub const CREATE_ROOM_BUTTON: Button = Button {
     loc: Rectangle {
         x: 200.0,
         y: 200.0,
@@ -108,12 +108,12 @@ pub const CREATE_ROOM_BUTTON : Button = Button {
     },
     style: Style {
         foreground: colors::WHITE,
-        background: colors::RED
+        background: colors::RED,
     },
     text: None,
 };
 
-pub const JOIN_ROOM_BUTTON : Button = Button {
+pub const JOIN_ROOM_BUTTON: Button = Button {
     loc: Rectangle {
         x: 200.0,
         y: 700.0,
@@ -122,12 +122,12 @@ pub const JOIN_ROOM_BUTTON : Button = Button {
     },
     style: Style {
         foreground: colors::WHITE,
-        background: colors::YELLOW
+        background: colors::YELLOW,
     },
     text: None,
 };
 
-pub const LOCK_GAME_BUTTON : Button = Button {
+pub const LOCK_GAME_BUTTON: Button = Button {
     loc: Rectangle {
         x: 200.0,
         y: 400.0,
@@ -141,7 +141,7 @@ pub const LOCK_GAME_BUTTON : Button = Button {
     text: None,
 };
 
-pub const START_GAME_BUTTON : Button = Button {
+pub const START_GAME_BUTTON: Button = Button {
     loc: Rectangle {
         x: 100.0,
         y: 200.0,
@@ -150,12 +150,12 @@ pub const START_GAME_BUTTON : Button = Button {
     },
     style: Style {
         foreground: colors::WHITE,
-        background: colors::BLUE
+        background: colors::BLUE,
     },
     text: None,
 };
 
-pub const RACER : Button = Button {
+pub const RACER: Button = Button {
     loc: Rectangle {
         x: 100.0,
         y: 400.0,

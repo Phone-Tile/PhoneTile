@@ -13,7 +13,9 @@ pub struct Player {
 impl Player {
     /// Send data to the associated client
     pub fn send(&mut self, data: &[u8; packet::MAX_DATA_SIZE]) {
-        self.sender.send(pipe::GameMessage::data_message(data.clone())).unwrap();
+        self.sender
+            .send(pipe::GameMessage::data_message(data.clone()))
+            .unwrap();
     }
 
     /// Receive data from the associated client
@@ -24,7 +26,7 @@ impl Player {
             Ok(m) => {
                 buffer.copy_from_slice(&m.data.unwrap());
                 true
-            },
+            }
             Err(TryRecvError::Empty) => false,
             Err(TryRecvError::Disconnected) => panic!("Client {} disconnected", self.rank),
         }

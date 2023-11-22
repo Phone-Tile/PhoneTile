@@ -1,20 +1,20 @@
+use log::{info, warn};
+use std::io::{self, Write};
 use std::net::{TcpListener, TcpStream};
+use std::sync::mpsc::{self, TryRecvError};
 use std::thread;
 use std::time;
 use std::vec::Vec;
-use std::io::{self, Write};
-use std::sync::mpsc::{self, TryRecvError};
-use log::{info, warn};
 
-mod packet;
 mod connection;
 mod game;
+mod network;
+mod packet;
 mod pipe;
 pub mod player;
-mod network;
 
 /// The general pipe system will be the following :
-/// 
+///
 ///     .------------ User1 <-----------.
 ///     |                               |
 ///     |                               |
@@ -24,9 +24,8 @@ mod network;
 ///     |                               |
 ///     |                               |
 ///     `------------- User2 <----------'
-/// 
-/// 
-
+///
+///
 
 /// This structure save the handler and the pipes for game threads
 struct LocalGame {
@@ -71,7 +70,7 @@ impl Server {
     /// First handler of incomming connexions, is responsible to lauch the thread and build the local user structure
     fn first_handler(&self, stream: TcpStream, &tocken: &u16) -> thread::JoinHandle<()> {
         let sender = self.sender.clone();
-        thread::spawn (move || {
+        thread::spawn(move || {
             let mut c = connection::Connection::new(stream, tocken, sender);
             c.manager();
         })
@@ -85,12 +84,11 @@ impl Server {
                 let mut game = game::Game::new(receiver, self.room_tocken);
                 // game.add_player(message.sender);
 
-                self.games.push(
-                    LocalGame { handle: thread::spawn(move || {
-                        game.manager()
-                    }),
+                self.games.push(LocalGame {
+                    handle: thread::spawn(move || game.manager()),
                     tocken: self.room_tocken,
-                    sender: sender.clone() });
+                    sender: sender.clone(),
+                });
 
                 sender.send(message).unwrap();
 
@@ -105,7 +103,10 @@ impl Server {
                 }
                 // TODO: Add error message in the communication protocol for this case !
                 // Or at least send an general error message back to the client !
-                println!("[\033[33m WARNING \033[97m] Client {:?} : Unabled to locate the game {:?}", message.session_tocken, message.room_tocken);
+                println!(
+                    "[\033[33m WARNING \033[97m] Client {:?} : Unabled to locate the game {:?}",
+                    message.session_tocken, message.room_tocken
+                );
             }
         }
     }
@@ -119,10 +120,10 @@ impl Server {
             }
         }
     }
-    
+
     fn update_connections_status(&mut self) {
         let mut i: usize = 0;
-        while i<self.connections.len() {
+        while i < self.connections.len() {
             if self.connections[i].handle.is_finished() {
                 self.connections.swap_remove(i);
             } else {
@@ -130,16 +131,19 @@ impl Server {
             }
         }
     }
-    
+
     /// Launch the server
     pub fn launch_server(&mut self) -> std::io::Result<()> {
         let _ = log::set_logger(&LOGGER).map(|()| log::set_max_level(log::LevelFilter::Info));
         info!(target: "Server", "starting ...");
 
         let listener = TcpListener::bind("0.0.0.0:8888")?;
-        listener.set_nonblocking(true).expect("Cannot set non-blocking");
+        listener
+            .set_nonblocking(true)
+            .expect("Cannot set non-blocking");
 
-        const ERROR_MESSAGE: [u8;packet::HEADER_SIZE] = [0, packet::Flag::Error as u8, 0, 0, 0, 0, 0, 0];
+        const ERROR_MESSAGE: [u8; packet::HEADER_SIZE] =
+            [0, packet::Flag::Error as u8, 0, 0, 0, 0, 0, 0];
 
         info!(target: "Server", "started successfully");
 
@@ -150,19 +154,24 @@ impl Server {
                 Ok(mut stream) => {
                     info!(target: "Server", "New incomming connection");
                     if self.connections.len() < Server::MAX_USERS {
-                        self.connections.push(LocalConnection { handle: self.first_handler(stream, &self.connection_tocken), tocken: self.connection_tocken });
+                        self.connections.push(LocalConnection {
+                            handle: self.first_handler(stream, &self.connection_tocken),
+                            tocken: self.connection_tocken,
+                        });
                         self.connection_tocken += 1;
                     } else {
                         stream.write_all(&ERROR_MESSAGE).unwrap();
                     }
-                },
+                }
                 Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                     // wait until network socket is ready, typically implemented
                     // via platform-specific APIs such as epoll or IOCP
                     thread::sleep(time::Duration::from_millis(10));
                     continue;
                 }
-                Err(error) => warn!(target: "Server", "some unexpected error occured : {:?}", error),
+                Err(error) => {
+                    warn!(target: "Server", "some unexpected error occured : {:?}", error)
+                }
             }
         }
         Ok(())
@@ -179,7 +188,12 @@ impl log::Log for SimpleLogger {
 
     fn log(&self, record: &log::Record) {
         if self.enabled(record.metadata()) {
-            println!("[ {} ] {} -- {}", record.level(), record.target(), record.args());
+            println!(
+                "[ {} ] {} -- {}",
+                record.level(),
+                record.target(),
+                record.args()
+            );
         }
     }
 
@@ -187,7 +201,6 @@ impl log::Log for SimpleLogger {
 }
 
 static LOGGER: SimpleLogger = SimpleLogger;
-
 
 #[cfg(test)]
 mod tests {
@@ -238,7 +251,7 @@ mod tests {
             thread::sleep(time::Duration::from_millis(1000));
             loop {
                 match client.get_status() {
-                    network::Status::InLockRoom(_) => {},
+                    network::Status::InLockRoom(_) => {}
                     network::Status::InGame => break,
                     _ => continue,
                 }

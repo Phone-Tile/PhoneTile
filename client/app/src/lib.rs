@@ -1,7 +1,7 @@
 use std::convert::TryInto;
 use std::ffi::c_char;
-use std::time;
 use std::thread;
+use std::time;
 
 extern crate raylib;
 use raylib::*;
@@ -23,13 +23,14 @@ pub extern "C" fn ANativeActivity_onCreate(
     unsafe { native_app_glue::ANativeActivity_onCreate_C(activity, saved_state, saved_state_size) }
 }
 //////////////////////////////////////////////////////////////////////////
-mod ui;
-mod network;
 mod game;
-use ui::button::{Button, Draw, Style, JOIN_ROOM_BUTTON, CREATE_ROOM_BUTTON, START_GAME_BUTTON, LOCK_GAME_BUTTON};
+mod network;
+mod ui;
 use ui::button;
+use ui::button::{
+    Button, Draw, Style, CREATE_ROOM_BUTTON, JOIN_ROOM_BUTTON, LOCK_GAME_BUTTON, START_GAME_BUTTON,
+};
 use ui::colors;
-
 
 // Main function
 #[no_mangle]
@@ -41,7 +42,7 @@ extern "C" fn main() {
             TraceLogLevel_LOG_ERROR.try_into().unwrap(),
             raylib_str!("Hello from phone_tile"),
         );
-        
+
         let screen_width = 0;
         let screen_height = 0;
 
@@ -53,12 +54,16 @@ extern "C" fn main() {
 
         let mut room = 0;
 
-        let create_room_button = button::Button::new(raylib::Rectangle {
-            x: 200.0,
-            y: 200.0,
-            width: 1000.0,
-            height: 300.0,
-        }, button::Style::new(colors::WHITE, colors::YELLOW), Some(format!("Create")));
+        let create_room_button = button::Button::new(
+            raylib::Rectangle {
+                x: 200.0,
+                y: 200.0,
+                width: 1000.0,
+                height: 300.0,
+            },
+            button::Style::new(colors::WHITE, colors::YELLOW),
+            Some(format!("Create")),
+        );
 
         SetTargetFPS(60);
 
@@ -69,7 +74,6 @@ extern "C" fn main() {
 
                 match network.get_status() {
                     network::Status::Connected => {
-
                         //TEXT : PHONE TILE
                         create_room_button.draw();
                         button::JOIN_ROOM_BUTTON.draw();
@@ -98,7 +102,7 @@ extern "C" fn main() {
                             100,
                             200,
                             100,
-                            colors::WHITE
+                            colors::WHITE,
                         );
                     }
                     network::Status::InRoom => {
@@ -116,7 +120,7 @@ extern "C" fn main() {
                             500,
                             1500,
                             300,
-                            colors::WHITE
+                            colors::WHITE,
                         );
                         // if it is not the host :
                         // TEXT : waiting ...
@@ -133,13 +137,7 @@ extern "C" fn main() {
                     }
                     network::Status::InLockRoom(n) => {
                         // as char ?
-                        DrawText(
-                            raylib_str!(format!("{n}")),
-                            100,
-                            200,
-                            1000,
-                            colors::PURPLE
-                        );
+                        DrawText(raylib_str!(format!("{n}")), 100, 200, 1000, colors::PURPLE);
                         //if host (again) :
                         button::START_GAME_BUTTON.draw();
                         if button::START_GAME_BUTTON.colision() {
@@ -154,14 +152,14 @@ extern "C" fn main() {
                         // main_game(receive(data));
                         break;
                     }
-                    }
-                });
+                }
+            });
 
-                DrawFPS(10, 10);
-            };
-            game::racer::main_game(&mut network);
-            CloseWindow();
+            DrawFPS(10, 10);
         }
+        game::racer::main_game(&mut network);
+        CloseWindow();
+    }
 
-        // UnloadTexture(tex_bunny);
+    // UnloadTexture(tex_bunny);
 }
