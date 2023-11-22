@@ -1,5 +1,5 @@
-use crate::bezier::*;
-use crate::vehicle::*;
+use crate::game::bezier::*;
+use crate::game::vehicle::*;
 use plotters::prelude::*;
 use tqdm::tqdm;
 
