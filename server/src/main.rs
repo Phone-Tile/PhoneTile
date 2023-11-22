@@ -1,4 +1,5 @@
 mod network;
+mod game;
 
 fn main() {
     let mut server = network::Server::new();
