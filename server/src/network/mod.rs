@@ -10,7 +10,7 @@ mod packet;
 mod connection;
 mod game;
 mod pipe;
-mod player;
+pub mod player;
 mod network;
 
 /// The general pipe system will be the following :
@@ -249,7 +249,7 @@ mod tests {
             assert!(client.recv(&mut buffer));
             thread::sleep(time::Duration::from_millis(1000));
         });
-        
+
         client1.join().unwrap();
         client2.join().unwrap();
         client3.join().unwrap();

@@ -1,7 +1,6 @@
 use log::info;
 
 use super::{pipe, packet};
-use std::hash::BuildHasher;
 use std::sync::mpsc::{self, TryRecvError};
 use std::thread;
 use std::time;
@@ -69,7 +68,7 @@ impl Game {
             index += 1;
         }
     }
-    
+
     fn unlock_game(&mut self) {
         for p in self.players.iter() {
             p.sender.send(pipe::GameMessage::launch_message()).unwrap();

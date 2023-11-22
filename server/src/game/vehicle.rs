@@ -4,7 +4,7 @@ pub struct Vehicle {
     pub curve_index: usize,
     pub t: f64,
     pub car_idx: usize,
-    pub is_leaving: Option<crate::bezier::Point>,
+    pub is_leaving: Option<super::bezier::Point>,
 }
 
 impl Vehicle {
