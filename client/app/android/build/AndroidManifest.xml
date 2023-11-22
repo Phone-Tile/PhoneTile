@@ -11,7 +11,7 @@
         <activity android:name="com.phone_tile.game.NativeLoader"
             android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
             android:configChanges="orientation|keyboardHidden|screenSize"
-            android:screenOrientation="landscape" android:launchMode="singleTask"
+            android:screenOrientation="portrait" android:launchMode="singleTask"
             android:clearTaskOnLaunch="true">
             <meta-data android:name="android.app.lib_name" android:value="phone_tile"/>
             <intent-filter>

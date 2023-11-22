@@ -2,7 +2,6 @@ use crate::network::packet;
 use super::packet::{MAX_DATA_SIZE, HEADER_SIZE};
 use super::pipe::{self, GameMessage};
 
-use std::hash::BuildHasher;
 use std::net::TcpStream;
 use std::process::exit;
 use std::io::{Write, Read, ErrorKind};
@@ -65,7 +64,7 @@ impl Connection {
             main_sender,
             game_sender: None,
             my_recv: receiver,
-            my_sender: sender
+            my_sender: sender,
         }
     }
 

@@ -61,22 +61,31 @@ impl Draw for Button {
 }
 
 impl Button {
-    fn colision(&self) -> bool {
+    pub fn colision(&self) -> bool {
         // check if finger slides over button
-        True;
+        false
     }
-    fn click(&self) -> bool {
+    pub fn click(&self) -> bool {
         // check if click on the button
-        true;
+        unsafe {
+            if raylib::IsMouseButtonPressed(raylib::MouseButton_MOUSE_BUTTON_LEFT as i32) {
+                let mouse_pos = raylib::GetMousePosition();
+                if self.loc.x < mouse_pos.x && mouse_pos.x < self.loc.x+self.loc.width
+                    && self.loc.y < mouse_pos.y && mouse_pos.y < self.loc.y+self.loc.height {
+                    return true;
+                }
+            }
+            false
+        }
     }
-    fn change_foreground_color(&self, color: Color) {
-        panic!()
+    pub fn change_foreground_color(&self, color: Color) {
+        todo!()
         // change color
         // each color has an associated color to change into
         // want to know if I need to create an entirely new button
     }
-    fn change_background_color(&self, color: Color) {
-        panic!()
+    pub fn change_background_color(&self, color: Color) {
+        todo!()
         // change color
     }
 }
@@ -94,8 +103,8 @@ pub const CREATE_ROOM_BUTTON : Button = Button {
     loc: Rectangle {
         x: 200.0,
         y: 200.0,
-        width: 100.0,
-        height: 200.0,
+        width: 1000.0,
+        height: 300.0,
     },
     style: Style {
         foreground: colors::WHITE,
@@ -107,9 +116,9 @@ pub const CREATE_ROOM_BUTTON : Button = Button {
 pub const JOIN_ROOM_BUTTON : Button = Button {
     loc: Rectangle {
         x: 200.0,
-        y: 400.0,
-        width: 100.0,
-        height: 200.0,
+        y: 700.0,
+        width: 1000.0,
+        height: 300.0,
     },
     style: Style {
         foreground: colors::WHITE,
@@ -122,8 +131,8 @@ pub const LOCK_GAME_BUTTON : Button = Button {
     loc: Rectangle {
         x: 200.0,
         y: 400.0,
-        width: 100.0,
-        height: 200.0,
+        width: 1000.0,
+        height: 300.0,
     },
     style: Style {
         foreground: colors::WHITE,
@@ -136,8 +145,8 @@ pub const START_GAME_BUTTON : Button = Button {
     loc: Rectangle {
         x: 100.0,
         y: 200.0,
-        width: 100.0,
-        height: 200.0,
+        width: 1000.0,
+        height: 300.0,
     },
     style: Style {
         foreground: colors::WHITE,
@@ -146,14 +155,12 @@ pub const START_GAME_BUTTON : Button = Button {
     text: None,
 };
 
-
-/*  
 pub const RACER : Button = Button {
     loc: Rectangle {
         x: 100.0,
-        y: 200.0,
-        width: 100.0,
-        height: 200.0,
+        y: 400.0,
+        width: 1000.0,
+        height: 300.0,
     },
     style: Style {
         foreground: colors::WHITE,
@@ -161,4 +168,3 @@ pub const RACER : Button = Button {
     },
     text: None,
 };
-*/

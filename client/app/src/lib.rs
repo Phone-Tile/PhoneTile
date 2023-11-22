@@ -1,7 +1,7 @@
 use std::convert::TryInto;
 use std::ffi::c_char;
-
-mod network;
+use std::time;
+use std::thread;
 
 extern crate raylib;
 use raylib::*;
@@ -29,26 +29,21 @@ mod game;
 use ui::button::{Button, Draw, Style, JOIN_ROOM_BUTTON, CREATE_ROOM_BUTTON, START_GAME_BUTTON, LOCK_GAME_BUTTON};
 use ui::button;
 use ui::colors;
-use network::network::{Status, get_status, create_room, join_room, lock_game, launch_game, send, receive};
-use game::cars::game::{move_car, draw_tracks};
-
-
-
 
 
 // Main function
 #[no_mangle]
 extern "C" fn main() {
-    let network = network::Network::connect(1., 1., 1, 1);
+    let mut network = network::Network::connect(1., 1., 1, 1);
     unsafe {
         //let game_selected: Option<Game> = None;
         TraceLog(
             TraceLogLevel_LOG_ERROR.try_into().unwrap(),
             raylib_str!("Hello from phone_tile"),
         );
-
-        let screen_width = 800;
-        let screen_height = 450;
+        
+        let screen_width = 0;
+        let screen_height = 0;
 
         raylib::InitWindow(screen_width, screen_height, raylib_str!("rust app test"));
 
@@ -56,105 +51,117 @@ extern "C" fn main() {
 
         let tex_bunny = raylib::LoadTexture(raylib_str!("wabbit_alpha.png"));
 
+        let mut room = 0;
+
+        let create_room_button = button::Button::new(raylib::Rectangle {
+            x: 200.0,
+            y: 200.0,
+            width: 1000.0,
+            height: 300.0,
+        }, button::Style::new(colors::WHITE, colors::YELLOW), Some(format!("Create")));
+
         SetTargetFPS(60);
 
         while !WindowShouldClose() {
+            // thread::sleep(time::Duration::from_secs(1));
             draw!({
                 ClearBackground(colors::BLACK);
 
-                match get_status() {
-                    Status::CONNECTED => {
+                match network.get_status() {
+                    network::Status::Connected => {
 
                         //TEXT : PHONE TILE
-                        button::CREATE_ROOM_BUTTON.draw();
+                        create_room_button.draw();
                         button::JOIN_ROOM_BUTTON.draw();
 
-                        if button::CREATE_ROOM_BUTTON.collision() {
-                            button::CREATE_ROOM_BUTTON.change_foreground_color();
+                        if create_room_button.colision() {
+                            create_room_button.change_foreground_color(colors::BLUE);
                         };
-                        if button::JOIN_ROOM_BUTTON.collision() {
-                            button::JOIN_ROOM_BUTTON.change_foreground_color();
+                        if button::JOIN_ROOM_BUTTON.colision() {
+                            button::JOIN_ROOM_BUTTON.change_foreground_color(colors::BLUE);
                         };
-                        if CREATE_ROOM_BUTTON.click() {
+                        if create_room_button.click() {
                             // as char ???
-                            DrawText(
-                                create_room() as char,
-                                100,
-                                200,
-                                100,
-                                Color::WHITE
-                            );
+                            room = network.create_room().unwrap();
                             // next line not necessary i think
                             // button::LOCK_GAME_BUTTON.draw()
                         };
                         if JOIN_ROOM_BUTTON.click() {
                             // TYPE ID;
-                            join_room();
+                            network.join_room(1).unwrap();
                             //TEXT : WAITING ...
                         }
                     }
-                    Status::DISCONNECTED => {
+                    network::Status::Disconnected => {
                         DrawText(
-                            "Sorry, network unsable :(",
+                            raylib_str!("Sorry, network unsable :("),
                             100,
                             200,
                             100,
-                            Color::WHITE
+                            colors::WHITE
                         );
                     }
-                    Status::IN_ROOM => {
+                    network::Status::InRoom => {
                         // if it is the host :
                         button::LOCK_GAME_BUTTON.draw();
-                        if button::LOCK_GAME_BUTTON.collision() {
-                            button::LOCK_GAME_BUTTON.change_foreground_color();
+                        if button::LOCK_GAME_BUTTON.colision() {
+                            button::LOCK_GAME_BUTTON.change_foreground_color(colors::BLUE);
                         };
                         if button::LOCK_GAME_BUTTON.click() {
-                            game_select();
+                            network.game_select();
                         }
+
+                        DrawText(
+                            raylib_str!(format!("{}", room)),
+                            500,
+                            1500,
+                            300,
+                            colors::WHITE
+                        );
                         // if it is not the host :
                         // TEXT : waiting ...
                     }
-                    Status::GAME_SELECT => {
+                    network::Status::SelectedGame => {
                         // if host
                         button::RACER.draw();
-                        if button::RACER.collision() {
-                            button::RACER.change_foreground_color();
+                        if button::RACER.colision() {
+                            button::RACER.change_foreground_color(colors::BLUE);
                         };
                         if button::RACER.click() {
-                            lock_game();
+                            network.lock_room().unwrap();
                         }
                     }
-                    Status::IN_LOCK_GAME(n) => {
+                    network::Status::InLockRoom(n) => {
                         // as char ?
                         DrawText(
-                            n as char,
+                            raylib_str!(format!("{n}")),
                             100,
                             200,
                             1000,
-                            Color::PURPLE
+                            colors::PURPLE
                         );
                         //if host (again) :
                         button::START_GAME_BUTTON.draw();
-                        if button::START_GAME_BUTTON.collision() {
-                            button::START_GAME_BUTTON.change_foreground_color();
+                        if button::START_GAME_BUTTON.colision() {
+                            button::START_GAME_BUTTON.change_foreground_color(colors::BLUE);
                         };
                         if button::START_GAME_BUTTON.click() {
-                            launch_game();
+                            network.launch_game().unwrap();
                         }
                     }
-                    Status::IN_GAME() => {
-                        send(data);
-                        main_game(receive(data));
+                    network::Status::InGame => {
+                        // network.send(data);
+                        // main_game(receive(data));
+                        break;
                     }
                     }
                 });
 
                 DrawFPS(10, 10);
             };
+            game::racer::main_game(&mut network);
+            CloseWindow();
         }
 
-        UnloadTexture(tex_bunny);
-
-        CloseWindow()
+        // UnloadTexture(tex_bunny);
 }
-
