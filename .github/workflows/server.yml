@@ -27,3 +27,6 @@ jobs:
     - name: Run tests
       run: cargo test --verbose
       working-directory: server
+    - name: cargo clippy
+      run: cargo clippy --all --all-targets -- -D warnings
+      working-directory: server
