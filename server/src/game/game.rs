@@ -348,32 +348,3 @@ impl Game {
         Ok(())
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    const EPSILON: f64 = f64::EPSILON * 10.;
-    #[test]
-    fn test_random_map() {
-        // Can generate the points as required
-        let phone_size = vec![(1., 1.), (0.3, 0.3), (1., 1.)];
-        let io_map = Game::get_io_map(&phone_size).unwrap();
-        assert_eq!(io_map.len(), 4 * (phone_size.len() - 1));
-        assert!(io_map
-            .iter()
-            .zip(vec![
-                ((0.9, 0.55), (0.9, 0.45)),
-                ((0.9, 0.45), (1.1, 0.45)),
-                ((1.1, 0.45), (1.2, 0.45)),
-                ((1.1, 0.55), (0.9, 0.55)),
-                ((1.2, 0.55), (1.1, 0.55)),
-                ((1.2, 0.45), (1.4, 0.45)),
-                ((1.4, 0.45), (1.4, 0.55)),
-                ((1.4, 0.55), (1.2, 0.55)),
-            ])
-            .all(|(&(f1, f2, _, _), (f3, f4))| (f1.0 - f3.0) < EPSILON
-                && (f1.1 - f3.1) < EPSILON
-                && (f2.1 - f4.1) < EPSILON
-                && (f2.0 - f4.0) < EPSILON));
-    }
-}

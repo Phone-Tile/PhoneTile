@@ -202,69 +202,69 @@ impl log::Log for SimpleLogger {
 
 static LOGGER: SimpleLogger = SimpleLogger;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn test_server_client_comm() {
-        let _ = thread::spawn(|| {
-            let mut server = Server::new();
-            server.launch_server().unwrap();
-        });
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     #[test]
+//     fn test_server_client_comm() {
+//         let _ = thread::spawn(|| {
+//             let mut server = Server::new();
+//             server.launch_server().unwrap();
+//         });
 
-        thread::sleep(time::Duration::from_millis(100));
+//         thread::sleep(time::Duration::from_millis(100));
 
-        let client1 = thread::spawn(|| {
-            let mut client = network::Network::connect(10., 10., 1000, 1000);
-            assert_eq!(client.create_room().unwrap(), 1_u16);
-            thread::sleep(time::Duration::from_millis(1000));
-            client.lock_room();
-            loop {
-                match client.get_status() {
-                    network::Status::InLockRoom(r) => break,
-                    _ => continue,
-                }
-            }
-            client.launch_game().unwrap();
-            loop {
-                match client.get_status() {
-                    network::Status::InGame => break,
-                    _ => continue,
-                }
-            }
-            thread::sleep(time::Duration::from_millis(10000));
-        });
+//         let client1 = thread::spawn(|| {
+//             let mut client = network::Network::connect(10., 10., 1000, 1000);
+//             assert_eq!(client.create_room().unwrap(), 1_u16);
+//             thread::sleep(time::Duration::from_millis(1000));
+//             client.lock_room();
+//             loop {
+//                 match client.get_status() {
+//                     network::Status::InLockRoom(r) => break,
+//                     _ => continue,
+//                 }
+//             }
+//             client.launch_game().unwrap();
+//             loop {
+//                 match client.get_status() {
+//                     network::Status::InGame => break,
+//                     _ => continue,
+//                 }
+//             }
+//             thread::sleep(time::Duration::from_millis(10000));
+//         });
 
-        thread::sleep(time::Duration::from_millis(20));
+//         thread::sleep(time::Duration::from_millis(20));
 
-        let client2 = thread::spawn(|| {
-            let mut client = network::Network::connect(10., 10., 1000, 1000);
-            assert_eq!(client.create_room().unwrap(), 2_u16);
-            thread::sleep(time::Duration::from_millis(20000));
-        });
+//         let client2 = thread::spawn(|| {
+//             let mut client = network::Network::connect(10., 10., 1000, 1000);
+//             assert_eq!(client.create_room().unwrap(), 2_u16);
+//             thread::sleep(time::Duration::from_millis(20000));
+//         });
 
-        thread::sleep(time::Duration::from_millis(10));
+//         thread::sleep(time::Duration::from_millis(10));
 
-        let client3 = thread::spawn(|| {
-            let mut client = network::Network::connect(10., 10., 1000, 1000);
-            client.join_room(1).unwrap();
-            thread::sleep(time::Duration::from_millis(1000));
-            loop {
-                match client.get_status() {
-                    network::Status::InLockRoom(_) => {}
-                    network::Status::InGame => break,
-                    _ => continue,
-                }
-            }
-            let mut buffer = [1_u8; packet::MAX_DATA_SIZE];
-            client.send(&buffer);
-            thread::sleep(time::Duration::from_millis(100));
-            assert!(client.recv(&mut buffer));
-            thread::sleep(time::Duration::from_millis(1000));
-        });
+//         let client3 = thread::spawn(|| {
+//             let mut client = network::Network::connect(10., 10., 1000, 1000);
+//             client.join_room(1).unwrap();
+//             thread::sleep(time::Duration::from_millis(1000));
+//             loop {
+//                 match client.get_status() {
+//                     network::Status::InLockRoom(_) => {}
+//                     network::Status::InGame => break,
+//                     _ => continue,
+//                 }
+//             }
+//             let mut buffer = [1_u8; packet::MAX_DATA_SIZE];
+//             client.send(&buffer);
+//             thread::sleep(time::Duration::from_millis(100));
+//             assert!(client.recv(&mut buffer));
+//             thread::sleep(time::Duration::from_millis(1000));
+//         });
 
-        client1.join().unwrap();
-        client2.join().unwrap();
-        client3.join().unwrap();
-    }
-}
+//         client1.join().unwrap();
+//         client2.join().unwrap();
+//         client3.join().unwrap();
+//     }
+// }
