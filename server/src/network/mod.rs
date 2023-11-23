@@ -1,5 +1,5 @@
 #![allow(unused)]
-use log::{info, warn};
+use log::{error, info, warn};
 use std::io::{self, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::mpsc::{self, TryRecvError};
@@ -41,6 +41,7 @@ struct LocalConnection {
 }
 
 pub struct Server {
+    target: String,
     connections: Vec<LocalConnection>,
     games: Vec<LocalGame>,
     connection_tocken: u16,
@@ -58,6 +59,7 @@ impl Server {
         let (send, recv) = mpsc::channel();
 
         Server {
+            target: "Server".to_string(),
             connections: Vec::with_capacity(Server::MAX_USERS),
             games: Vec::with_capacity(Server::MAX_GAMES),
             connection_tocken: 1,
@@ -90,23 +92,30 @@ impl Server {
                     sender: sender.clone(),
                 });
 
-                sender.send(message).unwrap();
+                match sender.send(message) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        error!(target: self.target.as_str(), "room {} pipe disconnected after creation",self.room_tocken)
+                    }
+                }
 
                 self.room_tocken += 1;
             }
             pipe::ServerMessageFlag::Join => {
                 for g in self.games.iter() {
                     if g.tocken == message.room_tocken {
-                        g.sender.send(message).unwrap();
+                        match g.sender.send(message) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                error!(target: self.target.as_str(), "room {} pipe disconnected",self.room_tocken)
+                            }
+                        }
                         return;
                     }
                 }
                 // TODO: Add error message in the communication protocol for this case !
                 // Or at least send an general error message back to the client !
-                println!(
-                    "[\033[33m WARNING \033[97m] Client {:?} : Unabled to locate the game {:?}",
-                    message.session_tocken, message.room_tocken
-                );
+                warn!(target: self.target.as_str(), "Unable to locate the game {}", message.room_tocken);
             }
         }
     }
@@ -116,7 +125,7 @@ impl Server {
             match self.receiver.try_recv() {
                 Ok(m) => self.handle_connection_pipe_message(m),
                 Err(TryRecvError::Empty) => break,
-                Err(_) => panic!("Something weird happened !"),
+                Err(TryRecvError::Disconnected) => panic!("pipe sender dropped"), // should never happened
             }
         }
     }
@@ -135,24 +144,30 @@ impl Server {
     /// Launch the server
     pub fn launch_server(&mut self) -> std::io::Result<()> {
         let _ = log::set_logger(&LOGGER).map(|()| log::set_max_level(log::LevelFilter::Info));
-        info!(target: "Server", "starting ...");
+        info!(target: self.target.as_str(), "starting ...");
 
         let listener = TcpListener::bind("0.0.0.0:8888")?;
         listener
             .set_nonblocking(true)
             .expect("Cannot set non-blocking");
 
-        const ERROR_MESSAGE: [u8; packet::HEADER_SIZE] =
-            [0, packet::Flag::Error as u8, 0, 0, 0, 0, 0, 0];
-
-        info!(target: "Server", "started successfully");
+        info!(target: self.target.as_str(), "started successfully");
 
         for stream in listener.incoming() {
             self.update_connections_status();
             self.handle_connection_pipe();
             match stream {
                 Ok(mut stream) => {
-                    info!(target: "Server", "New incomming connection");
+                    match stream.peer_addr() {
+                        Ok(addr) => {
+                            info!(target: self.target.as_str(), "new incomming connection from {}", addr)
+                        }
+                        Err(e) => {
+                            // This case is really so that the main thread is the most reliable possible
+                            warn!(target: self.target.as_str(), "client unreachable : {e}");
+                            continue;
+                        }
+                    };
                     if self.connections.len() < Server::MAX_USERS {
                         self.connections.push(LocalConnection {
                             handle: self.first_handler(stream, &self.connection_tocken),
@@ -160,7 +175,12 @@ impl Server {
                         });
                         self.connection_tocken += 1;
                     } else {
-                        stream.write_all(&ERROR_MESSAGE).unwrap();
+                        match stream.write_all(&packet::error_message(self.connection_tocken)) {
+                            Ok(_) => warn!(target: self.target.as_str(), "no thread available"),
+                            Err(e) => {
+                                warn!(target: self.target.as_str(), "couldn't disconnect client : {e}")
+                            }
+                        }
                     }
                 }
                 Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
@@ -170,7 +190,7 @@ impl Server {
                     continue;
                 }
                 Err(error) => {
-                    warn!(target: "Server", "some unexpected error occured : {:?}", error)
+                    warn!(target: self.target.as_str(), "unexpected error : {:?}", error);
                 }
             }
         }
@@ -189,7 +209,7 @@ impl log::Log for SimpleLogger {
     fn log(&self, record: &log::Record) {
         if self.enabled(record.metadata()) {
             println!(
-                "[ {} ] {} -- {}",
+                "[ {} ] {:>30} -- {}",
                 record.level(),
                 record.target(),
                 record.args()
@@ -202,69 +222,73 @@ impl log::Log for SimpleLogger {
 
 static LOGGER: SimpleLogger = SimpleLogger;
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     #[test]
-//     fn test_server_client_comm() {
-//         let _ = thread::spawn(|| {
-//             let mut server = Server::new();
-//             server.launch_server().unwrap();
-//         });
+mod network;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::*;
+    #[test]
+    fn test_server_client_comm() {
+        let _ = thread::spawn(|| {
+            let mut server = Server::new();
+            server.launch_server().unwrap();
+        });
 
-//         thread::sleep(time::Duration::from_millis(100));
+        thread::sleep(time::Duration::from_millis(100));
 
-//         let client1 = thread::spawn(|| {
-//             let mut client = network::Network::connect(10., 10., 1000, 1000);
-//             assert_eq!(client.create_room().unwrap(), 1_u16);
-//             thread::sleep(time::Duration::from_millis(1000));
-//             client.lock_room();
-//             loop {
-//                 match client.get_status() {
-//                     network::Status::InLockRoom(r) => break,
-//                     _ => continue,
-//                 }
-//             }
-//             client.launch_game().unwrap();
-//             loop {
-//                 match client.get_status() {
-//                     network::Status::InGame => break,
-//                     _ => continue,
-//                 }
-//             }
-//             thread::sleep(time::Duration::from_millis(10000));
-//         });
+        let client1 = thread::spawn(|| {
+            let mut client = network::Network::connect(10., 10., 1000, 1000);
+            assert_eq!(client.create_room().unwrap(), 1_u16);
+            thread::sleep(time::Duration::from_millis(1000));
+            client.lock_room();
+            loop {
+                match client.get_status() {
+                    network::Status::InLockRoom(r) => break,
+                    _ => continue,
+                }
+            }
+            client.launch_game().unwrap();
+            loop {
+                match client.get_status() {
+                    network::Status::InGame => break,
+                    _ => continue,
+                }
+            }
+            let mut buffer = [1_u8; packet::MAX_DATA_SIZE];
+            assert!(client.recv(&mut buffer));
+            thread::sleep(time::Duration::from_millis(10000));
+        });
 
-//         thread::sleep(time::Duration::from_millis(20));
+        thread::sleep(time::Duration::from_millis(20));
 
-//         let client2 = thread::spawn(|| {
-//             let mut client = network::Network::connect(10., 10., 1000, 1000);
-//             assert_eq!(client.create_room().unwrap(), 2_u16);
-//             thread::sleep(time::Duration::from_millis(20000));
-//         });
+        let client2 = thread::spawn(|| {
+            let mut client = network::Network::connect(10., 10., 1000, 1000);
+            assert_eq!(client.create_room().unwrap(), 2_u16);
+            thread::sleep(time::Duration::from_millis(20000));
+        });
 
-//         thread::sleep(time::Duration::from_millis(10));
+        thread::sleep(time::Duration::from_millis(10));
 
-//         let client3 = thread::spawn(|| {
-//             let mut client = network::Network::connect(10., 10., 1000, 1000);
-//             client.join_room(1).unwrap();
-//             thread::sleep(time::Duration::from_millis(1000));
-//             loop {
-//                 match client.get_status() {
-//                     network::Status::InLockRoom(_) => {}
-//                     network::Status::InGame => break,
-//                     _ => continue,
-//                 }
-//             }
-//             let mut buffer = [1_u8; packet::MAX_DATA_SIZE];
-//             client.send(&buffer);
-//             thread::sleep(time::Duration::from_millis(100));
-//             assert!(client.recv(&mut buffer));
-//             thread::sleep(time::Duration::from_millis(1000));
-//         });
+        let client3 = thread::spawn(|| {
+            let mut client = network::Network::connect(10., 10., 1000, 1000);
+            client.join_room(1).unwrap();
+            thread::sleep(time::Duration::from_millis(1000));
+            loop {
+                match client.get_status() {
+                    network::Status::InLockRoom(_) => {}
+                    network::Status::InGame => break,
+                    _ => continue,
+                }
+            }
+            let mut buffer = [1_u8; packet::MAX_DATA_SIZE];
+            client.send(&buffer);
+            thread::sleep(time::Duration::from_millis(100));
+            // assert!(client.recv(&mut buffer));
+            thread::sleep(time::Duration::from_millis(1000));
+        });
 
-//         client1.join().unwrap();
-//         client2.join().unwrap();
-//         client3.join().unwrap();
-//     }
-// }
+        client1.join().unwrap();
+        client2.join().unwrap();
+        client3.join().unwrap();
+    }
+}

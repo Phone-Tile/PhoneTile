@@ -1,5 +1,11 @@
 use std::convert::Into;
-use std::time::SystemTime;
+use std::hash::BuildHasher;
+use std::io::{Error, ErrorKind, Read, Write};
+use std::net::TcpStream;
+use std::thread;
+use std::time::{self, SystemTime};
+
+use log::info;
 
 pub const HEADER_SIZE: usize = 8;
 pub const MAX_DATA_SIZE: usize = 2040;
@@ -93,12 +99,12 @@ impl Packet {
         slice[1] = u8::try_from(int & (0x00ff_u16)).unwrap();
     }
 
-    fn process_v0_packet(packet: &[u8; BUFFER_SIZE]) -> Result<Packet, &'static str> {
+    fn process_v0_packet(packet: &[u8; BUFFER_SIZE]) -> Result<Self, Error> {
         // if size != packet[3] as usize + HEADER_SIZE {
         //     return Err("non-standard packet : packet size doesn't fit header info");
         // }
         let mut data = [0_u8; MAX_DATA_SIZE];
-        data.clone_from_slice(&packet[8..MAX_DATA_SIZE + HEADER_SIZE]);
+        data.clone_from_slice(&packet[8..BUFFER_SIZE]);
 
         Ok(Packet {
             version: Version::V0,
@@ -114,15 +120,18 @@ impl Packet {
     }
 
     /// Create a packet from raw data
-    pub fn unpack(packet: &[u8; BUFFER_SIZE]) -> Result<Self, &'static str> {
+    fn unpack(packet: &[u8; BUFFER_SIZE]) -> Result<Self, Error> {
         match packet[0].into() {
             Version::V0 => Self::process_v0_packet(packet),
-            _ => Err("non-standard packet : not recognized version"),
+            _ => Err(Error::new(
+                ErrorKind::InvalidData,
+                "non-standard packet : not recognized version",
+            )),
         }
     }
 
     /// Pack in buffer the packet
-    pub fn pack(&self, packet: &mut [u8; MAX_DATA_SIZE + HEADER_SIZE]) {
+    fn pack(&self, packet: &mut [u8; BUFFER_SIZE]) {
         packet[0] = self.version.into();
         packet[1] = self.flag;
         packet[2] = self.sync;
@@ -138,14 +147,58 @@ impl Packet {
     }
 
     /// Produce a log in stdout
-    pub fn log_packet(self) {
-        println!(
-            "[ \033[32m INFO \033[97m ] Packet processed at {:?} :",
-            self.processed_time
-        );
-        println!("\t Version : {:?}", self.version as u8);
-        println!("\t Size : {:?}", self.size + HEADER_SIZE);
-        println!("\t Session : {:?}", self.session);
-        println!("\t Room : {:?}", self.room);
+    pub fn log_packet(&self) {
+        info!(target: "Packet", "Procesed at {:?} :", self.processed_time);
+        info!(target: "Packet", "\t Version : {}", self.version as u8);
+        info!(target: "Packet", "\t Size : {:?}", self.size + HEADER_SIZE);
+        info!(target: "Packet", "\t Session : {:?}", self.session);
+        info!(target: "Packet", "\t Room : {:?}", self.room);
     }
+
+    /// Receive and unpack a packet, it will be blocking until it receives a packet or the pipe is procken
+    pub fn recv_packet(stream: &mut TcpStream) -> Result<Self, Error> {
+        let mut buffer = [0_u8; BUFFER_SIZE];
+
+        Packet::block_read_exact(stream, &mut buffer)?;
+        Packet::unpack(&buffer)
+    }
+
+    /// Receive and unpack a packet without blocking
+    pub fn try_recv_packet(stream: &mut TcpStream) -> Option<Self> {
+        let mut buffer = [0_u8; BUFFER_SIZE];
+
+        match stream.read_exact(&mut buffer) {
+            Ok(_) => match Packet::unpack(&buffer) {
+                Ok(packet) => Some(packet),
+                Err(_) => None,
+            },
+            Err(_) => None,
+        }
+    }
+
+    /// Send the packet
+    pub fn send_packet(&self, stream: &mut TcpStream) -> Result<(), Error> {
+        let mut buffer = [0_u8; BUFFER_SIZE];
+
+        self.pack(&mut buffer);
+        stream.write_all(&buffer)
+    }
+
+    fn block_read_exact(stream: &mut TcpStream, buf: &mut [u8]) -> Result<(), Error> {
+        loop {
+            match stream.read_exact(buf) {
+                Ok(_) => return Ok(()),
+                Err(e) if e.kind() == ErrorKind::WouldBlock => {}
+                Err(e) => return Err(e),
+            }
+            thread::sleep(time::Duration::from_millis(30));
+        }
+    }
+}
+
+pub fn error_message(session_tocken: u16) -> [u8; BUFFER_SIZE] {
+    let mut msg = [0_u8; BUFFER_SIZE];
+    msg[0] = Flag::Error as u8;
+    Packet::pack_u16(session_tocken, &mut msg[4..6]);
+    msg
 }
