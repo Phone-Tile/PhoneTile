@@ -224,7 +224,7 @@ impl log::Log for SimpleLogger {
 
 static LOGGER: SimpleLogger = SimpleLogger;
 
-mod network;
+mod client;
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -239,20 +239,20 @@ mod tests {
         thread::sleep(time::Duration::from_millis(100));
 
         let client1 = thread::spawn(|| {
-            let mut client = network::Network::connect(10., 10., 1000, 1000);
+            let mut client = client::Network::connect(10., 10., 1000, 1000);
             assert_eq!(client.create_room().unwrap(), 1_u16);
             thread::sleep(time::Duration::from_millis(1000));
             client.lock_room();
             loop {
                 match client.get_status() {
-                    network::Status::InLockRoom(r) => break,
+                    client::Status::InLockRoom(r) => break,
                     _ => continue,
                 }
             }
             client.launch_game().unwrap();
             loop {
                 match client.get_status() {
-                    network::Status::InGame => break,
+                    client::Status::InGame => break,
                     _ => continue,
                 }
             }
@@ -264,7 +264,7 @@ mod tests {
         thread::sleep(time::Duration::from_millis(20));
 
         let client2 = thread::spawn(|| {
-            let mut client = network::Network::connect(10., 10., 1000, 1000);
+            let mut client = client::Network::connect(10., 10., 1000, 1000);
             assert_eq!(client.create_room().unwrap(), 2_u16);
             thread::sleep(time::Duration::from_millis(200));
         });
@@ -272,13 +272,13 @@ mod tests {
         thread::sleep(time::Duration::from_millis(10));
 
         let client3 = thread::spawn(|| {
-            let mut client = network::Network::connect(10., 10., 1000, 1000);
+            let mut client = client::Network::connect(10., 10., 1000, 1000);
             client.join_room(1).unwrap();
             thread::sleep(time::Duration::from_millis(1000));
             loop {
                 match client.get_status() {
-                    network::Status::InLockRoom(_) => {}
-                    network::Status::InGame => break,
+                    client::Status::InLockRoom(_) => {}
+                    client::Status::InGame => break,
                     _ => continue,
                 }
             }
