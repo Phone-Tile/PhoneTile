@@ -257,8 +257,8 @@ mod tests {
                 }
             }
             let mut buffer = [1_u8; packet::MAX_DATA_SIZE];
-            assert!(client.recv(&mut buffer));
-            thread::sleep(time::Duration::from_millis(10000));
+            // assert!(client.recv(&mut buffer));
+            // thread::sleep(time::Duration::from_millis(10000));
         });
 
         thread::sleep(time::Duration::from_millis(20));
@@ -266,7 +266,7 @@ mod tests {
         let client2 = thread::spawn(|| {
             let mut client = network::Network::connect(10., 10., 1000, 1000);
             assert_eq!(client.create_room().unwrap(), 2_u16);
-            thread::sleep(time::Duration::from_millis(20000));
+            thread::sleep(time::Duration::from_millis(200));
         });
 
         thread::sleep(time::Duration::from_millis(10));
@@ -292,5 +292,6 @@ mod tests {
         client1.join().unwrap();
         client2.join().unwrap();
         client3.join().unwrap();
+        panic!("Make this test fail");
     }
 }

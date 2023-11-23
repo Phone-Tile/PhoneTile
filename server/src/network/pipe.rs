@@ -37,6 +37,7 @@ pub enum GameMessageFlag {
     Data,
 
     Disconnected,
+    Error,
 }
 
 pub struct GameMessage {
@@ -86,6 +87,16 @@ impl GameMessage {
             sender: None,
             rank: None,
             data: Some(data),
+        }
+    }
+
+    pub fn error_message() -> Self {
+        GameMessage {
+            flag: GameMessageFlag::Error,
+            room_tocken: 0,
+            sender: None,
+            rank: None,
+            data: None,
         }
     }
 }
