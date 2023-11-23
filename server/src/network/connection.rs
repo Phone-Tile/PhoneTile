@@ -172,11 +172,11 @@ impl Connection {
             Lock::Enabled => {
                 // listen to stream
                 match packet::Packet::recv_packet(&mut self.stream) {
-                    Ok(_) => {}, // TODO : add packet sanity check
+                    Ok(_) => {} // TODO : add packet sanity check
                     Err(_) => {
                         warn!(target: self.target.as_str(), "client disconnected");
                         exit(0);
-                    },
+                    }
                 }
                 match &self.game_sender {
                     Some(sender) => {
@@ -251,11 +251,11 @@ impl Connection {
             Lock::Enabled => {
                 // listen to stream
                 match packet::Packet::recv_packet(&mut self.stream) {
-                    Ok(_) => {}, // TODO : add packet sanity check
+                    Ok(_) => {} // TODO : add packet sanity check
                     Err(_) => {
                         warn!(target: self.target.as_str(), "client disconnected");
                         exit(0);
-                    },
+                    }
                 }
                 let sender = self.game_sender.as_ref().unwrap();
                 match sender.send(pipe::GameMessage::lock_message(0)) {
