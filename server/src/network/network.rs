@@ -24,15 +24,9 @@ pub struct Network {
 impl Network {
     fn init_handshake(&mut self) -> Result<(), Error> {
         let mut buffer = [0_u8; packet::MAX_DATA_SIZE + packet::HEADER_SIZE];
-        packet::Packet::new(
-            packet::Flag::Init as u8,
-            0,
-            0,
-            0,
-            [0_u8; packet::MAX_DATA_SIZE],
-        )
-        .send_packet(&mut self.stream)
-        .unwrap();
+        packet::Packet::new(packet::Flag::Init, 0, 0, 0, [0_u8; packet::MAX_DATA_SIZE])
+            .send_packet(&mut self.stream)
+            .unwrap();
 
         match packet::Packet::recv_packet(&mut self.stream) {
             Ok(packet) => {
@@ -69,15 +63,9 @@ impl Network {
     /// If you use this function outisde of a game, this will simply discard the message
     pub fn send(&mut self, data: &[u8; packet::MAX_DATA_SIZE]) {
         let mut buffer = [0_u8; packet::BUFFER_SIZE];
-        packet::Packet::new(
-            packet::Flag::Transmit as u8,
-            0,
-            self.session_tocken,
-            0,
-            *data,
-        )
-        .send_packet(&mut self.stream)
-        .unwrap();
+        packet::Packet::new(packet::Flag::Transmit, 0, self.session_tocken, 0, *data)
+            .send_packet(&mut self.stream)
+            .unwrap();
     }
 
     /// Receive data from the server ; this action can only be done in game
@@ -97,7 +85,7 @@ impl Network {
     /// to connect themselves to it
     pub fn create_room(&mut self) -> Result<u16, Error> {
         let packet_room_creation = packet::Packet::new(
-            packet::Flag::Create as u8,
+            packet::Flag::Create,
             0,
             self.session_tocken,
             0,
@@ -118,7 +106,7 @@ impl Network {
     /// Join a room with the given room ID
     pub fn join_room(&mut self, room_tocken: u16) -> Result<(), Error> {
         packet::Packet::new(
-            packet::Flag::Join as u8,
+            packet::Flag::Join,
             0,
             self.session_tocken,
             room_tocken,
@@ -167,7 +155,7 @@ impl Network {
     /// THIS FUNCTION WILL WORK ONLY IF create_room HAS BEEN CALLED BEFORE THAT
     pub fn lock_room(&mut self) -> Result<(), Error> {
         packet::Packet::new(
-            0,
+            packet::Flag::Lock,
             0,
             self.session_tocken,
             self.room_tocken,
@@ -180,7 +168,7 @@ impl Network {
     /// THIS FUNCTION WILL WORK ONLY IF create_room HAS BEEN CALLED BEFORE THAT
     pub fn launch_game(&mut self) -> Result<(), Error> {
         match packet::Packet::new(
-            packet::Flag::Launch as u8,
+            packet::Flag::Launch,
             0,
             self.session_tocken,
             self.room_tocken,

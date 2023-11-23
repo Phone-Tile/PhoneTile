@@ -77,10 +77,10 @@ pub struct Packet {
 }
 
 impl Packet {
-    pub fn new(flag: u8, sync: u8, session: u16, room: u16, data: [u8; MAX_DATA_SIZE]) -> Packet {
+    pub fn new(flag: Flag, sync: u8, session: u16, room: u16, data: [u8; MAX_DATA_SIZE]) -> Packet {
         Packet {
             version: Version::V0,
-            flag,
+            flag: flag as u8,
             sync,
             size: data.len(),
             session,
@@ -194,11 +194,8 @@ impl Packet {
             thread::sleep(time::Duration::from_millis(30));
         }
     }
-}
 
-pub fn error_message(session_tocken: u16) -> [u8; BUFFER_SIZE] {
-    let mut msg = [0_u8; BUFFER_SIZE];
-    msg[0] = Flag::Error as u8;
-    Packet::pack_u16(session_tocken, &mut msg[4..6]);
-    msg
+    pub fn error_message(session_tocken: u16) -> Packet {
+        Self::new(Flag::Error, 0, session_tocken, 0, [0_u8; MAX_DATA_SIZE])
+    }
 }

@@ -175,7 +175,9 @@ impl Server {
                         });
                         self.connection_tocken += 1;
                     } else {
-                        match stream.write_all(&packet::error_message(self.connection_tocken)) {
+                        match packet::Packet::error_message(self.connection_tocken)
+                            .send_packet(&mut stream)
+                        {
                             Ok(_) => warn!(target: self.target.as_str(), "no thread available"),
                             Err(e) => {
                                 warn!(target: self.target.as_str(), "couldn't disconnect client : {e}")

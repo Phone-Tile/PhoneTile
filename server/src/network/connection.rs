@@ -2,13 +2,27 @@ use super::packet::{HEADER_SIZE, MAX_DATA_SIZE};
 use super::pipe::{self, GameMessage};
 use crate::network::packet;
 
-use log::{error, info};
+use log::{error, info, warn};
 use std::io::{Error, ErrorKind, Read, Write};
 use std::net::TcpStream;
 use std::process::exit;
 use std::sync::mpsc::{self, TryRecvError};
-use std::thread;
 use std::time;
+use std::{error, thread};
+
+macro_rules! send_packet {
+    ( $packet:expr, $s:expr ) => {
+        {
+            match $packet.send_packet(&mut $s.stream) {
+                Ok(_) => {},
+                Err(e) => {
+                    warn!(target: $s.target.as_str(), "client disconnected : {}", e);
+                    exit(0);
+                }
+            }
+        }
+    };
+}
 
 #[derive(Clone)]
 enum Lock {
@@ -34,9 +48,8 @@ pub struct Connection {
     // Sender for the game thread (game oriented communication)
     game_sender: Option<mpsc::Sender<GameMessage>>,
 
-    // Sender/Receiver pair for the game thread to send us data
-    my_recv: mpsc::Receiver<GameMessage>,
-    my_sender: mpsc::Sender<GameMessage>,
+    // Receiver for the game thread to send us data
+    my_recv: Option<mpsc::Receiver<GameMessage>>,
 }
 
 impl Connection {
@@ -45,7 +58,6 @@ impl Connection {
         tocken: u16,
         main_sender: mpsc::Sender<pipe::ServerMessage>,
     ) -> Self {
-        let (sender, receiver) = mpsc::channel();
         let mut target: String = "".to_string();
         match stream.peer_addr() {
             Ok(addr) => target = format!("Client {tocken} ({})", addr),
@@ -62,8 +74,7 @@ impl Connection {
             stream,
             main_sender,
             game_sender: None,
-            my_recv: receiver,
-            my_sender: sender,
+            my_recv: None,
         }
     }
 
@@ -75,146 +86,195 @@ impl Connection {
                 exit(0);
             }
         }
-
         info!(target: self.target.as_str(), "Handshake done");
-        let lock = self.handle_room_joining_message();
-        info!(target: self.target.as_str(), "Join room {}", self.room_tocken);
-        let rank = self.wait_lock(lock.clone());
-        self.send_rank(rank);
-        self.wait_launch(lock);
-        self.main_loop();
+
+        'room: loop {
+            let lock = self.handle_room_joining_message();
+            info!(target: self.target.as_str(), "Join room {}", self.room_tocken);
+            'game: loop {
+                match self.wait_lock(&lock) {
+                    Ok(rank) => {
+                        self.send_rank(rank);
+                        match self.wait_launch(&lock) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                error!(target: self.target.as_str(), "{e}");
+                                send_packet!(
+                                    packet::Packet::error_message(self.session_tocken),
+                                    self
+                                );
+                                continue 'room;
+                            }
+                        }
+                        match self.main_loop() {
+                            Ok(_) => {}
+                            Err(e) => {
+                                error!(target: self.target.as_str(), "{e}");
+                                send_packet!(
+                                    packet::Packet::error_message(self.session_tocken),
+                                    self
+                                );
+                                continue 'room;
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        error!(target: self.target.as_str(), "{e}");
+                        continue 'room;
+                    }
+                }
+            }
+        }
     }
 
-    fn main_loop(&mut self) {
+    fn main_loop(&mut self) -> Result<(), Error> {
         loop {
             // try receive from the client
             if let Some(packet) = packet::Packet::try_recv_packet(&mut self.stream) {
                 match &self.game_sender {
-                    Some(sender) => sender
-                        .send(pipe::GameMessage::data_message(packet.data))
-                        .unwrap(),
+                    Some(sender) => match sender.send(pipe::GameMessage::data_message(packet.data))
+                    {
+                        Ok(_) => {}
+                        Err(_) => {
+                            send_packet!(packet::Packet::error_message(self.session_tocken), self);
+                            break;
+                        }
+                    },
                     None => panic!("No sender !"),
                 }
             }
 
             // try receive from the game
-            let error = self.my_recv.try_recv();
+            let error = &self.my_recv.as_ref().unwrap().try_recv(); // is will
             match error {
                 Ok(message) => {
                     let packet = packet::Packet::new(
-                        packet::Flag::Transmit as u8,
+                        packet::Flag::Transmit,
                         0,
                         self.session_tocken,
                         self.room_tocken,
                         message.data.unwrap(), // should never be None
                     );
-                    packet.send_packet(&mut self.stream).unwrap();
+                    send_packet!(packet, self);
                 }
                 Err(TryRecvError::Empty) => {}
                 Err(TryRecvError::Disconnected) => {
-                    panic!("Client {} disconnected !", self.session_tocken)
+                    return Err(Error::new(ErrorKind::BrokenPipe, "pipe with game broken"))
                 }
             };
             thread::sleep(time::Duration::from_millis(10));
         }
+        Ok(())
     }
 
-    fn wait_launch(&mut self, lock: Lock) {
+    fn wait_launch(&mut self, lock: &Lock) -> Result<(), Error> {
         match lock {
             Lock::Enabled => {
                 // listen to stream
                 let _ = packet::Packet::recv_packet(&mut self.stream);
                 match &self.game_sender {
                     Some(sender) => {
-                        sender.send(pipe::GameMessage::launch_message()).unwrap();
-                        match self.my_recv.recv() {
+                        match sender.send(pipe::GameMessage::launch_message()) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                return Err(Error::new(
+                                    ErrorKind::BrokenPipe,
+                                    "pipe with game broken",
+                                ))
+                            }
+                        }
+                        match self.my_recv.as_ref().unwrap().recv() {
                             Ok(_) => {
-                                packet::Packet::new(
-                                    packet::Flag::Launch as u8,
+                                let packet = packet::Packet::new(
+                                    packet::Flag::Launch,
                                     0,
                                     self.session_tocken,
                                     self.room_tocken,
                                     [0_u8; packet::MAX_DATA_SIZE],
-                                )
-                                .send_packet(&mut self.stream)
-                                .unwrap();
+                                );
+                                send_packet!(packet, self);
                             }
-                            Err(e) => panic!("{e}"),
+                            Err(e) => {
+                                return Err(Error::new(
+                                    ErrorKind::BrokenPipe,
+                                    "pipe with game broken",
+                                ))
+                            }
                         }
                     }
-                    None => panic!("No sender !"),
+                    None => panic!("No sender !"), // this should never happened
                 }
             }
             Lock::Disabled => {
                 // listen to game_receiver for lock message
-                match self.my_recv.recv() {
+                match self.my_recv.as_ref().unwrap().recv() {
                     Ok(_) => {
-                        packet::Packet::new(
-                            packet::Flag::Launch as u8,
+                        let packet = packet::Packet::new(
+                            packet::Flag::Launch,
                             0,
                             self.session_tocken,
                             self.room_tocken,
                             [0_u8; packet::MAX_DATA_SIZE],
-                        )
-                        .send_packet(&mut self.stream)
-                        .unwrap();
+                        );
+                        send_packet!(packet, self);
                     }
-                    Err(e) => panic!("{e}"),
+                    Err(e) => {
+                        return Err(Error::new(ErrorKind::BrokenPipe, "pipe with game broken"))
+                    }
                 }
             }
         }
+        Ok(())
     }
 
     fn send_rank(&mut self, rank: u8) {
         let mut buffer = [0_u8; MAX_DATA_SIZE + HEADER_SIZE];
         let mut tbl = [0_u8; packet::MAX_DATA_SIZE];
         tbl[0] = rank;
-        packet::Packet::new(
-            packet::Flag::Lock as u8,
+        let packet = packet::Packet::new(
+            packet::Flag::Lock,
             0,
             self.session_tocken,
             self.room_tocken,
             tbl,
-        )
-        .send_packet(&mut self.stream)
-        .unwrap();
+        );
+        send_packet!(packet, self);
     }
 
-    fn wait_lock(&mut self, lock: Lock) -> u8 {
+    fn wait_lock(&mut self, lock: &Lock) -> Result<u8, Error> {
         match lock {
             Lock::Enabled => {
                 // listen to stream
                 let _ = packet::Packet::recv_packet(&mut self.stream);
-                match &self.game_sender {
-                    Some(sender) => {
-                        sender.send(pipe::GameMessage::lock_message(0)).unwrap();
-                        match self.my_recv.recv() {
-                            Ok(m) => m.rank.unwrap(),
-                            Err(e) => panic!("{e}"),
-                        }
+                let sender = self.game_sender.as_ref().unwrap();
+                match sender.send(pipe::GameMessage::lock_message(0)) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        return Err(Error::new(ErrorKind::BrokenPipe, "pipe with game broken"))
                     }
-                    None => panic!("No sender !"),
+                }
+                match self.my_recv.as_ref().unwrap().recv() {
+                    Ok(m) => Ok(m.rank.unwrap()), // should never be None
+                    Err(e) => Err(Error::new(ErrorKind::BrokenPipe, "pipe with game broken")),
                 }
             }
             Lock::Disabled => {
                 // listen to game_receiver for lock message
-                match self.my_recv.recv() {
-                    Ok(m) => m.rank.unwrap(),
-                    Err(e) => panic!("{e}"),
+                match self.my_recv.as_ref().unwrap().recv() {
+                    Ok(m) => Ok(m.rank.unwrap()), // should never be None
+                    Err(e) => Err(Error::new(ErrorKind::BrokenPipe, "pipe with game broken")),
                 }
             }
         }
     }
 
     fn handle_room_joining_message(&mut self) -> Lock {
-        let mut buffer = [0_u8; MAX_DATA_SIZE + HEADER_SIZE];
-
         // two possible things : either we create a game, either we connect to one !
-        // self.stream.read_exact(&mut buffer).unwrap();
         match packet::Packet::recv_packet(&mut self.stream) {
             Ok(packet) => {
                 let flag = packet.get_flag();
                 let room_tocken = packet.room;
+                let (sender, receiver) = mpsc::channel();
                 match flag {
                     packet::Flag::Create => {
                         self.main_sender
@@ -222,22 +282,22 @@ impl Connection {
                                 self.session_tocken,
                                 pipe::ServerMessageFlag::Create,
                                 0,
-                                self.my_sender.clone(),
+                                sender,
                             ))
-                            .unwrap();
-                        match self.my_recv.recv() {
+                            .unwrap(); // should never happened
+                        self.my_recv = Some(receiver);
+                        match self.my_recv.as_ref().unwrap().recv() {
                             Ok(message) => {
                                 self.room_tocken = message.room_tocken;
                                 self.game_sender = message.sender;
-                                packet::Packet::new(
-                                    packet::Flag::Create as u8,
+                                let packet = packet::Packet::new(
+                                    packet::Flag::Create,
                                     0,
                                     self.session_tocken,
                                     self.room_tocken,
                                     [0_u8; packet::MAX_DATA_SIZE],
-                                )
-                                .send_packet(&mut self.stream)
-                                .unwrap();
+                                );
+                                send_packet!(packet, self);
                                 Lock::Enabled
                             }
                             Err(_) => exit(0),
@@ -249,22 +309,22 @@ impl Connection {
                                 self.session_tocken,
                                 pipe::ServerMessageFlag::Join,
                                 room_tocken,
-                                self.my_sender.clone(),
+                                sender,
                             ))
                             .unwrap();
-                        match self.my_recv.recv() {
+                        self.my_recv = Some(receiver);
+                        match self.my_recv.as_ref().unwrap().recv() {
                             Ok(message) => {
                                 self.room_tocken = message.room_tocken;
                                 self.game_sender = message.sender;
-                                packet::Packet::new(
-                                    packet::Flag::Create as u8,
+                                let packet = packet::Packet::new(
+                                    packet::Flag::Create,
                                     0,
                                     self.session_tocken,
                                     self.room_tocken,
                                     [0_u8; packet::MAX_DATA_SIZE],
-                                )
-                                .send_packet(&mut self.stream)
-                                .unwrap();
+                                );
+                                send_packet!(packet, self);
                                 Lock::Disabled
                             }
                             Err(_) => exit(0),
@@ -276,20 +336,21 @@ impl Connection {
                     }
                 }
             }
-            Err(e) => panic!("{e}"),
+            Err(e) => {
+                warn!(target: self.target.as_str(), "{e}");
+                exit(0);
+            }
         }
     }
 
     /// Initial handshake
     fn init_handshake(&mut self) -> Result<(), Error> {
         match packet::Packet::recv_packet(&mut self.stream) {
-            Ok(packet) => match packet.send_packet(&mut self.stream) {
-                Ok(_) => {
-                    self.status = Status::Initialized;
-                    Ok(())
-                }
-                Err(e) => Err(e),
-            },
+            Ok(packet) => {
+                send_packet!(packet, self);
+                self.status = Status::Initialized;
+                Ok(())
+            }
             Err(e) => Err(e),
         }
     }
