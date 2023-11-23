@@ -171,7 +171,13 @@ impl Connection {
         match lock {
             Lock::Enabled => {
                 // listen to stream
-                let _ = packet::Packet::recv_packet(&mut self.stream);
+                match packet::Packet::recv_packet(&mut self.stream) {
+                    Ok(_) => {}, // TODO : add packet sanity check
+                    Err(_) => {
+                        warn!(target: self.target.as_str(), "client disconnected");
+                        exit(0);
+                    },
+                }
                 match &self.game_sender {
                     Some(sender) => {
                         match sender.send(pipe::GameMessage::launch_message()) {
@@ -228,7 +234,6 @@ impl Connection {
     }
 
     fn send_rank(&mut self, rank: u8) {
-        let mut buffer = [0_u8; MAX_DATA_SIZE + HEADER_SIZE];
         let mut tbl = [0_u8; packet::MAX_DATA_SIZE];
         tbl[0] = rank;
         let packet = packet::Packet::new(
@@ -245,7 +250,13 @@ impl Connection {
         match lock {
             Lock::Enabled => {
                 // listen to stream
-                let _ = packet::Packet::recv_packet(&mut self.stream);
+                match packet::Packet::recv_packet(&mut self.stream) {
+                    Ok(_) => {}, // TODO : add packet sanity check
+                    Err(_) => {
+                        warn!(target: self.target.as_str(), "client disconnected");
+                        exit(0);
+                    },
+                }
                 let sender = self.game_sender.as_ref().unwrap();
                 match sender.send(pipe::GameMessage::lock_message(0)) {
                     Ok(_) => {}
