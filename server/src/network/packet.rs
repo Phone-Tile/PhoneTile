@@ -1,5 +1,4 @@
 use std::convert::Into;
-<<<<<<< HEAD
 use std::hash::BuildHasher;
 use std::io::{Error, ErrorKind, Read, Write};
 use std::net::TcpStream;
@@ -7,9 +6,6 @@ use std::thread;
 use std::time::{self, SystemTime};
 
 use log::info;
-=======
-use std::time::SystemTime;
->>>>>>> main
 
 pub const HEADER_SIZE: usize = 8;
 pub const MAX_DATA_SIZE: usize = 2040;
@@ -103,20 +99,12 @@ impl Packet {
         slice[1] = u8::try_from(int & (0x00ff_u16)).unwrap();
     }
 
-<<<<<<< HEAD
     fn process_v0_packet(packet: &[u8; BUFFER_SIZE]) -> Result<Self, Error> {
-=======
-    fn process_v0_packet(packet: &[u8; BUFFER_SIZE]) -> Result<Packet, &'static str> {
->>>>>>> main
         // if size != packet[3] as usize + HEADER_SIZE {
         //     return Err("non-standard packet : packet size doesn't fit header info");
         // }
         let mut data = [0_u8; MAX_DATA_SIZE];
-<<<<<<< HEAD
         data.clone_from_slice(&packet[8..BUFFER_SIZE]);
-=======
-        data.clone_from_slice(&packet[8..MAX_DATA_SIZE + HEADER_SIZE]);
->>>>>>> main
 
         Ok(Packet {
             version: Version::V0,
@@ -132,7 +120,6 @@ impl Packet {
     }
 
     /// Create a packet from raw data
-<<<<<<< HEAD
     fn unpack(packet: &[u8; BUFFER_SIZE]) -> Result<Self, Error> {
         match packet[0].into() {
             Version::V0 => Self::process_v0_packet(packet),
@@ -140,21 +127,11 @@ impl Packet {
                 ErrorKind::InvalidData,
                 "non-standard packet : not recognized version",
             )),
-=======
-    pub fn unpack(packet: &[u8; BUFFER_SIZE]) -> Result<Self, &'static str> {
-        match packet[0].into() {
-            Version::V0 => Self::process_v0_packet(packet),
-            _ => Err("non-standard packet : not recognized version"),
->>>>>>> main
         }
     }
 
     /// Pack in buffer the packet
-<<<<<<< HEAD
     fn pack(&self, packet: &mut [u8; BUFFER_SIZE]) {
-=======
-    pub fn pack(&self, packet: &mut [u8; MAX_DATA_SIZE + HEADER_SIZE]) {
->>>>>>> main
         packet[0] = self.version.into();
         packet[1] = self.flag;
         packet[2] = self.sync;
@@ -170,7 +147,6 @@ impl Packet {
     }
 
     /// Produce a log in stdout
-<<<<<<< HEAD
     pub fn log_packet(&self) {
         info!(target: "Packet", "Procesed at {:?} :", self.processed_time);
         info!(target: "Packet", "\t Version : {}", self.version as u8);
@@ -226,16 +202,3 @@ pub fn error_message(session_tocken: u16) -> [u8; BUFFER_SIZE] {
     Packet::pack_u16(session_tocken, &mut msg[4..6]);
     msg
 }
-=======
-    pub fn log_packet(self) {
-        println!(
-            "[ \033[32m INFO \033[97m ] Packet processed at {:?} :",
-            self.processed_time
-        );
-        println!("\t Version : {:?}", self.version as u8);
-        println!("\t Size : {:?}", self.size + HEADER_SIZE);
-        println!("\t Session : {:?}", self.session);
-        println!("\t Room : {:?}", self.room);
-    }
-}
->>>>>>> main
