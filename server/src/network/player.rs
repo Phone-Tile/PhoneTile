@@ -1,5 +1,7 @@
 use super::packet;
 use super::pipe;
+use std::io::Error;
+use std::io::ErrorKind;
 use std::sync::mpsc;
 use std::sync::mpsc::TryRecvError;
 
@@ -12,23 +14,26 @@ pub struct Player {
 
 impl Player {
     /// Send data to the associated client
-    pub fn send(&mut self, data: &[u8; packet::MAX_DATA_SIZE]) {
-        self.sender
-            .send(pipe::GameMessage::data_message(*data))
-            .unwrap();
+    pub fn send(&mut self, data: &[u8; packet::MAX_DATA_SIZE]) -> Result<(), Error> {
+        match self.sender.send(pipe::GameMessage::data_message(*data)) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(Error::new(ErrorKind::NotConnected, "client not connected")),
+        }
     }
 
     /// Receive data from the associated client
     /// Return how much data was actually received
     /// If no data was received, the function return 0
-    pub fn recv(&mut self, buffer: &mut [u8; packet::MAX_DATA_SIZE]) -> bool {
+    pub fn recv(&mut self, buffer: &mut [u8; packet::MAX_DATA_SIZE]) -> Result<bool, Error> {
         match self.receiver.try_recv() {
             Ok(m) => {
                 buffer.copy_from_slice(&m.data.unwrap());
-                true
+                Ok(true)
             }
-            Err(TryRecvError::Empty) => false,
-            Err(TryRecvError::Disconnected) => panic!("Client {} disconnected", self.rank),
+            Err(TryRecvError::Empty) => Ok(false),
+            Err(TryRecvError::Disconnected) => {
+                Err(Error::new(ErrorKind::NotConnected, "client not connected"))
+            }
         }
     }
 

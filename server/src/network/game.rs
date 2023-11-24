@@ -1,13 +1,14 @@
-use log::info;
+use log::{info, warn};
 
 use super::player;
 use super::{packet, pipe};
+use std::process::exit;
 use std::sync::mpsc::{self, TryRecvError};
 use std::thread;
 use std::time;
 
 pub struct Game {
-    tocken: u16,
+    token: u16,
     target: String,
 
     // Receiver for the main thread (join request)
@@ -22,11 +23,11 @@ fn test_function(players: &mut Vec<player::Player>) {
         // let mut p1 = &mut players[0];
         // let mut p2 = &mut players[1];
         if players.len() > 1 {
-            if players[0].recv(&mut buffer) {
+            if players[0].recv(&mut buffer).unwrap() {
                 // println!("{buffer:?}");
                 players[1].send(&buffer);
             }
-            if players[1].recv(&mut buffer) {
+            if players[1].recv(&mut buffer).unwrap() {
                 players[0].send(&buffer);
             }
         } else {
@@ -37,10 +38,10 @@ fn test_function(players: &mut Vec<player::Player>) {
 }
 
 impl Game {
-    pub fn new(receiver: mpsc::Receiver<pipe::ServerMessage>, tocken: u16) -> Game {
-        let target: String = format!("Room {tocken}");
+    pub fn new(receiver: mpsc::Receiver<pipe::ServerMessage>, token: u16) -> Game {
+        let target: String = format!("Room {token}");
         Game {
-            tocken,
+            token,
             target,
             main_receiver: receiver,
             players: Vec::new(),
@@ -51,19 +52,24 @@ impl Game {
         match self.main_receiver.try_recv() {
             Ok(message) => {
                 self.add_player(message.sender);
-                info!(target: self.target.as_str(), "Client {} joined the room", message.session_tocken);
+                info!(target: self.target.as_str(), "Client {} joined the room", message.session_token);
             }
             Err(TryRecvError::Empty) => (),
             Err(_) => panic!("Pipe with the server broke unexpectedly"),
         }
     }
 
-    fn should_game_launch(&self) -> bool {
+    // TODO: might be usefull to warn the other threads before dropping the thread
+    fn should_game_launch(&mut self) -> bool {
         // NOTE : we can always ensure that the first player we receive is the master device
         match self.players[0].receiver.try_recv() {
             Ok(_) => true,
             Err(TryRecvError::Empty) => false,
-            Err(e) => panic!("Pipe with the master client broke unexpectedly : {e}"),
+            Err(e) => {
+                self.remove_player(0);
+                warn!(target: self.target.as_str(), "master client disconnected, shut down the room ...");
+                exit(0);
+            }
         }
     }
 
@@ -72,17 +78,32 @@ impl Game {
         let mut index = 0;
         while index < self.players.len() {
             self.players[index].rank = index as u8;
-            self.players[index]
+            match self.players[index]
                 .sender
                 .send(pipe::GameMessage::lock_message(index as u8))
-                .unwrap();
-            index += 1;
+            {
+                Ok(_) => index += 1,
+                Err(e) => {
+                    self.remove_player(index);
+                    warn!(target: self.target.as_str(), "client disconnected");
+                }
+            }
         }
     }
 
     fn unlock_game(&mut self) {
-        for p in self.players.iter() {
-            p.sender.send(pipe::GameMessage::launch_message()).unwrap();
+        let mut index = 0;
+        while index < self.players.len() {
+            match self.players[index]
+                .sender
+                .send(pipe::GameMessage::launch_message())
+            {
+                Ok(_) => index += 1,
+                Err(e) => {
+                    self.remove_player(index);
+                    warn!(target: self.target.as_str(), "client disconnected");
+                }
+            }
         }
 
         info!(target: self.target.as_str(), "Game launched");
@@ -91,10 +112,15 @@ impl Game {
         test_function(&mut self.players);
     }
 
+    // TODO: might be usefull to warn the other threads before dropping the thread
     fn launch_game(&mut self) {
         match self.players[0].receiver.recv() {
             Ok(_) => self.unlock_game(),
-            Err(_) => panic!("Pipe with the master client broke unexpectedly"),
+            Err(_) => {
+                self.remove_player(0);
+                warn!(target: self.target.as_str(), "master client disconnected, shut down the room ...");
+                exit(0);
+            }
         }
     }
 
@@ -119,13 +145,33 @@ impl Game {
 
     fn add_player(&mut self, p_sender: mpsc::Sender<pipe::GameMessage>) {
         let (sender, receiver) = mpsc::channel();
-        p_sender
-            .send(pipe::GameMessage::init_message(sender, self.tocken))
-            .unwrap();
-        self.players.push(player::Player {
-            sender: p_sender,
-            receiver,
-            rank: 0,
-        });
+        match p_sender.send(pipe::GameMessage::init_message(sender, self.token)) {
+            Ok(_) => {
+                self.players.push(player::Player {
+                    sender: p_sender,
+                    receiver,
+                    rank: 0,
+                });
+            }
+            Err(_) => {
+                warn!(target: self.target.as_str(), "client disconnected");
+            }
+        }
+    }
+
+    fn remove_player(&mut self, index: usize) {
+        let _ = self.players.swap_remove(index);
+        if self.players.len() == 1 {
+            match self.players[0]
+                .sender
+                .send(pipe::GameMessage::error_message())
+            {
+                Ok(_) => {
+                    warn!(target: self.target.as_str(), "too much client disonnected, stop the game")
+                }
+                Err(_) => warn!(target: self.target.as_str(), "client disconnected"),
+            }
+            exit(0);
+        }
     }
 }
