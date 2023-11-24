@@ -8,7 +8,7 @@ use std::thread;
 use std::time;
 
 pub struct Game {
-    tocken: u16,
+    token: u16,
     target: String,
 
     // Receiver for the main thread (join request)
@@ -38,10 +38,10 @@ fn test_function(players: &mut Vec<player::Player>) {
 }
 
 impl Game {
-    pub fn new(receiver: mpsc::Receiver<pipe::ServerMessage>, tocken: u16) -> Game {
-        let target: String = format!("Room {tocken}");
+    pub fn new(receiver: mpsc::Receiver<pipe::ServerMessage>, token: u16) -> Game {
+        let target: String = format!("Room {token}");
         Game {
-            tocken,
+            token,
             target,
             main_receiver: receiver,
             players: Vec::new(),
@@ -52,7 +52,7 @@ impl Game {
         match self.main_receiver.try_recv() {
             Ok(message) => {
                 self.add_player(message.sender);
-                info!(target: self.target.as_str(), "Client {} joined the room", message.session_tocken);
+                info!(target: self.target.as_str(), "Client {} joined the room", message.session_token);
             }
             Err(TryRecvError::Empty) => (),
             Err(_) => panic!("Pipe with the server broke unexpectedly"),
@@ -145,7 +145,7 @@ impl Game {
 
     fn add_player(&mut self, p_sender: mpsc::Sender<pipe::GameMessage>) {
         let (sender, receiver) = mpsc::channel();
-        match p_sender.send(pipe::GameMessage::init_message(sender, self.tocken)) {
+        match p_sender.send(pipe::GameMessage::init_message(sender, self.token)) {
             Ok(_) => {
                 self.players.push(player::Player {
                     sender: p_sender,

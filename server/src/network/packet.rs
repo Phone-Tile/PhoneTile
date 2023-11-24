@@ -195,7 +195,7 @@ impl Packet {
         }
     }
 
-    pub fn error_message(session_tocken: u16) -> Packet {
-        Self::new(Flag::Error, 0, session_tocken, 0, [0_u8; MAX_DATA_SIZE])
+    pub fn error_message(session_token: u16) -> Packet {
+        Self::new(Flag::Error, 0, session_token, 0, [0_u8; MAX_DATA_SIZE])
     }
 }

@@ -30,22 +30,22 @@ pub mod player;
 /// This structure save the handler and the pipes for game threads
 struct LocalGame {
     handle: thread::JoinHandle<()>,
-    tocken: u16,
+    token: u16,
     sender: mpsc::Sender<pipe::ServerMessage>,
 }
 
 /// This structure save the handler for user threads
 struct LocalConnection {
     handle: thread::JoinHandle<()>,
-    tocken: u16,
+    token: u16,
 }
 
 pub struct Server {
     target: String,
     connections: Vec<LocalConnection>,
     games: Vec<LocalGame>,
-    connection_tocken: u16,
-    room_tocken: u16,
+    connection_token: u16,
+    room_token: u16,
     sender: mpsc::Sender<pipe::ServerMessage>,
     receiver: mpsc::Receiver<pipe::ServerMessage>,
 }
@@ -62,18 +62,18 @@ impl Server {
             target: "Server".to_string(),
             connections: Vec::with_capacity(Server::MAX_USERS),
             games: Vec::with_capacity(Server::MAX_GAMES),
-            connection_tocken: 1,
-            room_tocken: 1,
+            connection_token: 1,
+            room_token: 1,
             sender: send,
             receiver: recv,
         }
     }
 
     /// First handler of incomming connexions, is responsible to lauch the thread and build the local user structure
-    fn first_handler(&self, stream: TcpStream, &tocken: &u16) -> thread::JoinHandle<()> {
+    fn first_handler(&self, stream: TcpStream, &token: &u16) -> thread::JoinHandle<()> {
         let sender = self.sender.clone();
         thread::spawn(move || {
-            let mut c = connection::Connection::new(stream, tocken, sender);
+            let mut c = connection::Connection::new(stream, token, sender);
             c.manager();
         })
     }
@@ -83,31 +83,31 @@ impl Server {
             pipe::ServerMessageFlag::Create => {
                 let (sender, receiver) = mpsc::channel();
 
-                let mut game = game::Game::new(receiver, self.room_tocken);
+                let mut game = game::Game::new(receiver, self.room_token);
                 // game.add_player(message.sender);
 
                 self.games.push(LocalGame {
                     handle: thread::spawn(move || game.manager()),
-                    tocken: self.room_tocken,
+                    token: self.room_token,
                     sender: sender.clone(),
                 });
 
                 match sender.send(message) {
                     Ok(_) => {}
                     Err(e) => {
-                        error!(target: self.target.as_str(), "room {} pipe disconnected after creation",self.room_tocken)
+                        error!(target: self.target.as_str(), "room {} pipe disconnected after creation",self.room_token)
                     }
                 }
 
-                self.room_tocken += 1;
+                self.room_token += 1;
             }
             pipe::ServerMessageFlag::Join => {
                 for g in self.games.iter() {
-                    if g.tocken == message.room_tocken {
+                    if g.token == message.room_token {
                         match g.sender.send(message) {
                             Ok(_) => {}
                             Err(e) => {
-                                error!(target: self.target.as_str(), "room {} pipe disconnected",self.room_tocken)
+                                error!(target: self.target.as_str(), "room {} pipe disconnected",self.room_token)
                             }
                         }
                         return;
@@ -115,7 +115,7 @@ impl Server {
                 }
                 // TODO: Add error message in the communication protocol for this case !
                 // Or at least send an general error message back to the client !
-                warn!(target: self.target.as_str(), "Unable to locate the game {}", message.room_tocken);
+                warn!(target: self.target.as_str(), "Unable to locate the game {}", message.room_token);
             }
         }
     }
@@ -170,12 +170,12 @@ impl Server {
                     };
                     if self.connections.len() < Server::MAX_USERS {
                         self.connections.push(LocalConnection {
-                            handle: self.first_handler(stream, &self.connection_tocken),
-                            tocken: self.connection_tocken,
+                            handle: self.first_handler(stream, &self.connection_token),
+                            token: self.connection_token,
                         });
-                        self.connection_tocken += 1;
+                        self.connection_token += 1;
                     } else {
-                        match packet::Packet::error_message(self.connection_tocken)
+                        match packet::Packet::error_message(self.connection_token)
                             .send_packet(&mut stream)
                         {
                             Ok(_) => warn!(target: self.target.as_str(), "no thread available"),

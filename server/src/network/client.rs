@@ -16,8 +16,8 @@ pub enum Status {
 
 pub struct Network {
     stream: TcpStream,
-    session_tocken: u16,
-    room_tocken: u16,
+    session_token: u16,
+    room_token: u16,
     status: Status,
 }
 
@@ -30,7 +30,7 @@ impl Network {
 
         match packet::Packet::recv_packet(&mut self.stream) {
             Ok(packet) => {
-                self.session_tocken = packet.session;
+                self.session_token = packet.session;
             }
             Err(_) => panic!("Not well formed packet"),
         }
@@ -48,8 +48,8 @@ impl Network {
             Ok(stream) => {
                 let mut network = Network {
                     stream,
-                    session_tocken: 0,
-                    room_tocken: 0,
+                    session_token: 0,
+                    room_token: 0,
                     status: Status::Connected,
                 };
                 network.init_handshake().unwrap();
@@ -63,7 +63,7 @@ impl Network {
     /// If you use this function outisde of a game, this will simply discard the message
     pub fn send(&mut self, data: &[u8; packet::MAX_DATA_SIZE]) {
         let mut buffer = [0_u8; packet::BUFFER_SIZE];
-        packet::Packet::new(packet::Flag::Transmit, 0, self.session_tocken, 0, *data)
+        packet::Packet::new(packet::Flag::Transmit, 0, self.session_token, 0, *data)
             .send_packet(&mut self.stream)
             .unwrap();
     }
@@ -87,7 +87,7 @@ impl Network {
         let packet_room_creation = packet::Packet::new(
             packet::Flag::Create,
             0,
-            self.session_tocken,
+            self.session_token,
             0,
             [0_u8; packet::MAX_DATA_SIZE],
         );
@@ -95,7 +95,7 @@ impl Network {
 
         match packet::Packet::recv_packet(&mut self.stream) {
             Ok(packet) => {
-                self.room_tocken = packet.room;
+                self.room_token = packet.room;
                 self.status = Status::InRoom;
                 Ok(packet.room)
             }
@@ -104,19 +104,19 @@ impl Network {
     }
 
     /// Join a room with the given room ID
-    pub fn join_room(&mut self, room_tocken: u16) -> Result<(), Error> {
+    pub fn join_room(&mut self, room_token: u16) -> Result<(), Error> {
         packet::Packet::new(
             packet::Flag::Join,
             0,
-            self.session_tocken,
-            room_tocken,
+            self.session_token,
+            room_token,
             [0_u8; packet::MAX_DATA_SIZE],
         )
         .send_packet(&mut self.stream)?;
 
         match packet::Packet::recv_packet(&mut self.stream) {
             Ok(packet) => {
-                self.room_tocken = packet.room;
+                self.room_token = packet.room;
                 self.status = Status::InRoom;
             }
             Err(_) => panic!("Not well formed packet"),
@@ -157,8 +157,8 @@ impl Network {
         packet::Packet::new(
             packet::Flag::Lock,
             0,
-            self.session_tocken,
-            self.room_tocken,
+            self.session_token,
+            self.room_token,
             [0_u8; packet::MAX_DATA_SIZE],
         )
         .send_packet(&mut self.stream)
@@ -170,8 +170,8 @@ impl Network {
         match packet::Packet::new(
             packet::Flag::Launch,
             0,
-            self.session_tocken,
-            self.room_tocken,
+            self.session_token,
+            self.room_token,
             [0_u8; packet::MAX_DATA_SIZE],
         )
         .send_packet(&mut self.stream)

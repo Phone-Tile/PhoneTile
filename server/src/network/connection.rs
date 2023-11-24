@@ -39,8 +39,8 @@ pub struct Connection {
     status: Status,
     target: String,
 
-    session_tocken: u16,
-    room_tocken: u16,
+    session_token: u16,
+    room_token: u16,
     stream: TcpStream,
     // Sender for the main thread (game creation / join request)
     main_sender: mpsc::Sender<pipe::ServerMessage>,
@@ -55,22 +55,22 @@ pub struct Connection {
 impl Connection {
     pub fn new(
         stream: TcpStream,
-        tocken: u16,
+        token: u16,
         main_sender: mpsc::Sender<pipe::ServerMessage>,
     ) -> Self {
         let mut target: String = "".to_string();
         match stream.peer_addr() {
-            Ok(addr) => target = format!("Client {tocken} ({})", addr),
+            Ok(addr) => target = format!("Client {token} ({})", addr),
             Err(e) => {
-                error!(target: format!("Client {tocken} ()").as_str(), "client disconnected : {e}");
+                error!(target: format!("Client {token} ()").as_str(), "client disconnected : {e}");
             }
         }
 
         Connection {
             status: Status::Created,
             target,
-            session_tocken: tocken,
-            room_tocken: 0,
+            session_token: token,
+            room_token: 0,
             stream,
             main_sender,
             game_sender: None,
@@ -90,7 +90,7 @@ impl Connection {
 
         'room: loop {
             let lock = self.handle_room_joining_message();
-            info!(target: self.target.as_str(), "Join room {}", self.room_tocken);
+            info!(target: self.target.as_str(), "Join room {}", self.room_token);
             'game: loop {
                 match self.wait_lock(&lock) {
                     Ok(rank) => {
@@ -100,7 +100,7 @@ impl Connection {
                             Err(e) => {
                                 error!(target: self.target.as_str(), "{e}");
                                 send_packet!(
-                                    packet::Packet::error_message(self.session_tocken),
+                                    packet::Packet::error_message(self.session_token),
                                     self
                                 );
                                 continue 'room;
@@ -111,7 +111,7 @@ impl Connection {
                             Err(e) => {
                                 error!(target: self.target.as_str(), "{e}");
                                 send_packet!(
-                                    packet::Packet::error_message(self.session_tocken),
+                                    packet::Packet::error_message(self.session_token),
                                     self
                                 );
                                 continue 'room;
@@ -136,7 +136,7 @@ impl Connection {
                     {
                         Ok(_) => {}
                         Err(_) => {
-                            send_packet!(packet::Packet::error_message(self.session_tocken), self);
+                            send_packet!(packet::Packet::error_message(self.session_token), self);
                             break;
                         }
                     },
@@ -151,8 +151,8 @@ impl Connection {
                     let packet = packet::Packet::new(
                         packet::Flag::Transmit,
                         0,
-                        self.session_tocken,
-                        self.room_tocken,
+                        self.session_token,
+                        self.room_token,
                         message.data.unwrap(), // should never be None
                     );
                     send_packet!(packet, self);
@@ -194,8 +194,8 @@ impl Connection {
                                 let packet = packet::Packet::new(
                                     packet::Flag::Launch,
                                     0,
-                                    self.session_tocken,
-                                    self.room_tocken,
+                                    self.session_token,
+                                    self.room_token,
                                     [0_u8; packet::MAX_DATA_SIZE],
                                 );
                                 send_packet!(packet, self);
@@ -218,8 +218,8 @@ impl Connection {
                         let packet = packet::Packet::new(
                             packet::Flag::Launch,
                             0,
-                            self.session_tocken,
-                            self.room_tocken,
+                            self.session_token,
+                            self.room_token,
                             [0_u8; packet::MAX_DATA_SIZE],
                         );
                         send_packet!(packet, self);
@@ -239,8 +239,8 @@ impl Connection {
         let packet = packet::Packet::new(
             packet::Flag::Lock,
             0,
-            self.session_tocken,
-            self.room_tocken,
+            self.session_token,
+            self.room_token,
             tbl,
         );
         send_packet!(packet, self);
@@ -284,13 +284,13 @@ impl Connection {
         match packet::Packet::recv_packet(&mut self.stream) {
             Ok(packet) => {
                 let flag = packet.get_flag();
-                let room_tocken = packet.room;
+                let room_token = packet.room;
                 let (sender, receiver) = mpsc::channel();
                 match flag {
                     packet::Flag::Create => {
                         self.main_sender
                             .send(pipe::ServerMessage::new(
-                                self.session_tocken,
+                                self.session_token,
                                 pipe::ServerMessageFlag::Create,
                                 0,
                                 sender,
@@ -299,13 +299,13 @@ impl Connection {
                         self.my_recv = Some(receiver);
                         match self.my_recv.as_ref().unwrap().recv() {
                             Ok(message) => {
-                                self.room_tocken = message.room_tocken;
+                                self.room_token = message.room_token;
                                 self.game_sender = message.sender;
                                 let packet = packet::Packet::new(
                                     packet::Flag::Create,
                                     0,
-                                    self.session_tocken,
-                                    self.room_tocken,
+                                    self.session_token,
+                                    self.room_token,
                                     [0_u8; packet::MAX_DATA_SIZE],
                                 );
                                 send_packet!(packet, self);
@@ -317,22 +317,22 @@ impl Connection {
                     packet::Flag::Join => {
                         self.main_sender
                             .send(pipe::ServerMessage::new(
-                                self.session_tocken,
+                                self.session_token,
                                 pipe::ServerMessageFlag::Join,
-                                room_tocken,
+                                room_token,
                                 sender,
                             ))
                             .unwrap();
                         self.my_recv = Some(receiver);
                         match self.my_recv.as_ref().unwrap().recv() {
                             Ok(message) => {
-                                self.room_tocken = message.room_tocken;
+                                self.room_token = message.room_token;
                                 self.game_sender = message.sender;
                                 let packet = packet::Packet::new(
                                     packet::Flag::Create,
                                     0,
-                                    self.session_tocken,
-                                    self.room_tocken,
+                                    self.session_token,
+                                    self.room_token,
                                     [0_u8; packet::MAX_DATA_SIZE],
                                 );
                                 send_packet!(packet, self);
