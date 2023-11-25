@@ -24,9 +24,9 @@ endif
 	@echo -n "Êtes vous sur de vouloir modifier le ndk ? [y/N] " && read ans && [ $${ans:-N} = y ]
 
 ifdef NDK_HOME_NOT_DEFINE
-init: android/sdk check_init
-else
 init: android/sdk android/ndk check_init
+else
+init: android/sdk check_init
 endif
 	$(info Début de la modification du ndk)
 	grep "ANativeActivity_onCreate_C" $(NDK_HOME)/sources/android/native_app_glue/android_native_app_glue.c \
