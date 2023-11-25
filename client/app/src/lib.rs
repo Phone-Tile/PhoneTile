@@ -27,7 +27,7 @@ mod network;
 mod ui;
 use ui::button;
 use ui::button::{
-    Button, Draw, Style, CREATE_ROOM_BUTTON, JOIN_ROOM_BUTTON, LOCK_GAME_BUTTON, START_GAME_BUTTON,
+    Button, Draw, Style
 };
 use ui::colors;
 
@@ -53,18 +53,9 @@ extern "C" fn main() {
 
         let mut room = 0;
 
-        let create_room_button = button::Button::new(
-            raylib::Rectangle {
-                x: 200.0,
-                y: 200.0,
-                width: 1000.0,
-                height: 300.0,
-            },
-            button::Style::new(colors::WHITE, colors::YELLOW),
-            Some(format!("Create")),
-        );
-
         SetTargetFPS(60);
+
+        let mut is_host = true;
 
         while !WindowShouldClose() {
             draw!({
@@ -73,22 +64,22 @@ extern "C" fn main() {
                 match network.get_status() {
                     network::Status::Connected => {
                         //TEXT : PHONE TILE
-                        create_room_button.draw();
-                        button::JOIN_ROOM_BUTTON.draw();
+                        button::create_room().draw();
+                        button::join_room().draw();
 
-                        if create_room_button.colision() {
-                            create_room_button.change_foreground_color(colors::BLUE);
+                        if button::create_room().colision() {
+                            button::create_room().change_foreground_color(colors::BLUE);
                         };
-                        if button::JOIN_ROOM_BUTTON.colision() {
-                            button::JOIN_ROOM_BUTTON.change_foreground_color(colors::BLUE);
+                        if button::join_room().colision() {
+                            button::join_room().change_foreground_color(colors::BLUE);
                         };
-                        if create_room_button.click() {
+                        if button::create_room().click() {
                             // as char ???
                             room = network.create_room().unwrap();
                             // next line not necessary i think
-                            // button::LOCK_GAME_BUTTON.draw()
+                            // button::game_select().draw()
                         };
-                        if JOIN_ROOM_BUTTON.click() {
+                        if button::join_room().click() {
                             // TYPE ID;
                             network.join_room(1).unwrap();
                             //TEXT : WAITING ...
@@ -105,11 +96,11 @@ extern "C" fn main() {
                     }
                     network::Status::InRoom => {
                         // if it is the host :
-                        button::LOCK_GAME_BUTTON.draw();
-                        if button::LOCK_GAME_BUTTON.colision() {
-                            button::LOCK_GAME_BUTTON.change_foreground_color(colors::BLUE);
+                        button::game_select().draw();
+                        if button::game_select().colision() {
+                            button::game_select().change_foreground_color(colors::BLUE);
                         };
-                        if button::LOCK_GAME_BUTTON.click() {
+                        if button::game_select().click() {
                             network.game_select();
                         }
 
@@ -137,11 +128,11 @@ extern "C" fn main() {
                         // as char ?
                         DrawText(raylib_str!(format!("{n}")), 100, 200, 1000, colors::PURPLE);
                         //if host (again) :
-                        button::START_GAME_BUTTON.draw();
-                        if button::START_GAME_BUTTON.colision() {
-                            button::START_GAME_BUTTON.change_foreground_color(colors::BLUE);
+                        button::start_game().draw();
+                        if button::start_game().colision() {
+                            button::start_game().change_foreground_color(colors::BLUE);
                         };
-                        if button::START_GAME_BUTTON.click() {
+                        if button::start_game().click() {
                             network.launch_game().unwrap();
                         }
                     }

@@ -99,61 +99,72 @@ pub trait Draw {
 
 /*** all useful buttons ***/
 
-pub const CREATE_ROOM_BUTTON: Button = Button {
-    loc: Rectangle {
-        x: 200.0,
-        y: 200.0,
-        width: 1000.0,
-        height: 300.0,
-    },
-    style: Style {
-        foreground: colors::WHITE,
-        background: colors::RED,
-    },
-    text: None,
-};
+pub fn create_room() -> Button {
+    Button::new(
+        raylib::Rectangle {
+            x: 200.0,
+            y: 200.0,
+            width: 1000.0,
+            height: 300.0,
+        },
+        Style::new(colors::WHITE, colors::YELLOW),
+        Some(format!("Create")),
+    )
+}
 
-pub const JOIN_ROOM_BUTTON: Button = Button {
-    loc: Rectangle {
-        x: 200.0,
-        y: 700.0,
-        width: 1000.0,
-        height: 300.0,
-    },
-    style: Style {
-        foreground: colors::WHITE,
-        background: colors::YELLOW,
-    },
-    text: None,
-};
+pub fn join_room() -> Button {
+    Button::new(
+        raylib::Rectangle {
+            x: 200.0,
+            y: 700.0,
+            width: 1000.0,
+            height: 300.0,
+        },
+        Style::new(colors::WHITE, colors::YELLOW),
+        Some(format!("Join")),
+    ) 
+}
 
-pub const LOCK_GAME_BUTTON: Button = Button {
-    loc: Rectangle {
-        x: 200.0,
-        y: 400.0,
-        width: 1000.0,
-        height: 300.0,
-    },
-    style: Style {
-        foreground: colors::WHITE,
-        background: colors::GREEN,
-    },
-    text: None,
-};
+pub fn game_select() -> Button {
+    Button::new(
+        raylib::Rectangle {
+            x: 200.0,
+            y: 400.0,
+            width: 1000.0,
+            height: 300.0,
+        },
+        Style::new(colors::WHITE, colors::GREEN),
+        Some(format!("Start1")),
+    ) 
+}
 
-pub const START_GAME_BUTTON: Button = Button {
-    loc: Rectangle {
-        x: 100.0,
-        y: 200.0,
-        width: 1000.0,
-        height: 300.0,
-    },
-    style: Style {
-        foreground: colors::WHITE,
-        background: colors::BLUE,
-    },
-    text: None,
-};
+pub fn start_game() -> Button {
+    Button::new(
+        raylib::Rectangle {
+            x: 100.0,
+            y: 200.0,
+            width: 1000.0,
+            height: 300.0,
+        },
+        Style::new(colors::WHITE, colors::BLUE),
+        Some(format!("Start2")),
+    ) 
+}
+
+/*
+pub fn start_game() -> Button {
+    Button::new(
+        raylib::Rectangle {
+            x: 100.0,
+            y: 200.0,
+            width: 1000.0,
+            height: 300.0,
+        },
+        Style::new(colors::WHITE, colors::BLUE),
+        Some(format!("Start2")),
+    ) 
+}
+ */
 
 pub const RACER: Button = Button {
     loc: Rectangle {
