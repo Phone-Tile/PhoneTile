@@ -1,7 +1,7 @@
+use std::fmt::Display;
 use std::io::{Error, ErrorKind, Read, Write};
 use std::net::TcpStream;
 use std::{thread, time};
-use std::fmt::Display;
 
 pub mod packet;
 
@@ -109,8 +109,12 @@ impl Network {
                     room_token: 0,
                     status: Status::Connected,
                 };
-                network
-                    .init_handshake(physical_height, physical_width, window_height, window_width)?;
+                network.init_handshake(
+                    physical_height,
+                    physical_width,
+                    window_height,
+                    window_width,
+                )?;
                 Ok(network)
             }
             Err(_) => Err(Error::new(
@@ -265,9 +269,7 @@ impl Network {
         data[8..12].copy_from_slice(&window_height.to_be_bytes());
         data[12..16].copy_from_slice(&window_width.to_be_bytes());
 
-        packet::Packet::new(packet::Flag::Init, 0, 0, 0, &data, 0)
-            .send_packet(&mut self.stream)
-            ?;
+        packet::Packet::new(packet::Flag::Init, 0, 0, 0, &data, 0).send_packet(&mut self.stream)?;
 
         let packet = packet::Packet::recv_packet(&mut self.stream)?;
         self.session_token = packet.session;

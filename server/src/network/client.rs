@@ -101,16 +101,19 @@ impl Network {
     ) -> Result<Self, Error> {
         match TcpStream::connect("127.0.0.1:8888") {
             Ok(stream) => {
-                stream.set_nonblocking(true).unwrap();
+                stream.set_nonblocking(true)?;
                 let mut network = Network {
                     stream,
                     session_token: 0,
                     room_token: 0,
                     status: Status::Connected,
                 };
-                network
-                    .init_handshake(physical_height, physical_width, window_height, window_width)
-                    .unwrap();
+                network.init_handshake(
+                    physical_height,
+                    physical_width,
+                    window_height,
+                    window_width,
+                )?;
                 Ok(network)
             }
             Err(_) => Err(Error::new(
@@ -198,10 +201,9 @@ impl Network {
 
     /// Send data to the server ; this action can only be done in game
     /// If you use this function outisde of a game, this will simply discard the message
-    pub fn send(&mut self, data: &[u8]) {
+    pub fn send(&mut self, data: &[u8]) -> Result<(), Error> {
         packet::Packet::new(packet::Flag::Transmit, 0, self.session_token, 0, data, 0)
             .send_packet(&mut self.stream)
-            .unwrap();
     }
 
     /// Receive data from the server ; this action can only be done in game
@@ -266,9 +268,7 @@ impl Network {
         data[8..12].copy_from_slice(&window_height.to_be_bytes());
         data[12..16].copy_from_slice(&window_width.to_be_bytes());
 
-        packet::Packet::new(packet::Flag::Init, 0, 0, 0, &data, 0)
-            .send_packet(&mut self.stream)
-            .unwrap();
+        packet::Packet::new(packet::Flag::Init, 0, 0, 0, &data, 0).send_packet(&mut self.stream)?;
 
         let packet = packet::Packet::recv_packet(&mut self.stream)?;
         self.session_token = packet.session;
