@@ -3,7 +3,7 @@ name : Client
 on:
   workflow_dispatch:
   push:
-    branches : ["main"]
+    branches : ["main", "actions-client"]
     paths :
       - "client/**"
       - ".github/workflows/client.yml"
