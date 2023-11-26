@@ -98,7 +98,7 @@ impl Network {
         physical_width: f32,
         window_height: u32,
         window_width: u32,
-    ) -> Self {
+    ) -> Result<Self, Error> {
         match TcpStream::connect("127.0.0.1:8888") {
             Ok(stream) => {
                 stream.set_nonblocking(true).unwrap();
@@ -111,9 +111,12 @@ impl Network {
                 network
                     .init_handshake(physical_height, physical_width, window_height, window_width)
                     .unwrap();
-                network
+                Ok(network)
             }
-            Err(_) => panic!("Unabled to connect to server !"),
+            Err(_) => Err(Error::new(
+                ErrorKind::NotConnected,
+                "unable to connect to the server",
+            )),
         }
     }
 
@@ -124,14 +127,10 @@ impl Network {
             packet::Packet::new(packet::Flag::Create, 0, self.session_token, 0, &[], 0);
         packet_room_creation.send_packet(&mut self.stream)?;
 
-        match packet::Packet::recv_packet(&mut self.stream) {
-            Ok(packet) => {
-                self.room_token = packet.room;
-                self.status = Status::InRoom;
-                Ok(packet.room)
-            }
-            Err(_) => panic!("Not well formed packet"),
-        }
+        let packet = packet::Packet::recv_packet(&mut self.stream)?;
+        self.room_token = packet.room;
+        self.status = Status::InRoom;
+        Ok(packet.room)
     }
 
     /// Join a room with the given room ID
@@ -146,13 +145,9 @@ impl Network {
         )
         .send_packet(&mut self.stream)?;
 
-        match packet::Packet::recv_packet(&mut self.stream) {
-            Ok(packet) => {
-                self.room_token = packet.room;
-                self.status = Status::InRoom;
-            }
-            Err(_) => panic!("Not well formed packet"),
-        }
+        let packet = packet::Packet::recv_packet(&mut self.stream)?;
+        self.room_token = packet.room;
+        self.status = Status::InRoom;
 
         Ok(())
     }
@@ -275,12 +270,8 @@ impl Network {
             .send_packet(&mut self.stream)
             .unwrap();
 
-        match packet::Packet::recv_packet(&mut self.stream) {
-            Ok(packet) => {
-                self.session_token = packet.session;
-            }
-            Err(_) => panic!("Not well formed packet"),
-        }
+        let packet = packet::Packet::recv_packet(&mut self.stream)?;
+        self.session_token = packet.session;
         Ok(())
     }
 }

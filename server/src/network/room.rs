@@ -121,6 +121,7 @@ impl Room {
                 }
             }
         }
+        self.set_player_phone_location();
     }
 
     fn unlock_game(&mut self) {
@@ -174,6 +175,8 @@ impl Room {
                     sender: message.sender,
                     receiver,
                     rank: 0,
+                    top_left_x: 0.,
+                    top_left_y: 0.,
                     physical_height: message.physical_height,
                     physical_width: message.physical_width,
                     window_height: message.window_height,
@@ -204,6 +207,34 @@ impl Room {
             ));
         }
         Ok(())
+    }
+
+    fn set_player_phone_location(&mut self) {
+        // find max
+        let mut max_height: f32 = 0.;
+        for p in &self.players {
+            if p.physical_height > max_height {
+                max_height = p.physical_height
+            }
+        }
+
+        let mut current_x: f32 = 0.;
+        // compute pos by upward rank
+        for i in 0..self.players.len() {
+            let j = self.find_player_of_rank(i as u8);
+            self.players[j].top_left_x = current_x;
+            current_x += self.players[j].physical_width;
+            self.players[j].top_left_y = (max_height - self.players[j].physical_height) / 2.;
+        }
+    }
+
+    fn find_player_of_rank(&self, rank: u8) -> usize {
+        for i in 0..self.players.len() {
+            if self.players[i].rank == rank {
+                return i;
+            }
+        }
+        panic!("should never happened")
     }
 }
 

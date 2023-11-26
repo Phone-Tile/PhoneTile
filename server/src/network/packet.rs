@@ -284,8 +284,7 @@ impl Packet {
                 ErrorKind::InvalidInput,
                 format!(
                     "received the flag {} while expecting a {} packet",
-                    self.flag,
-                    flag,
+                    self.flag, flag,
                 ),
             ))
         }

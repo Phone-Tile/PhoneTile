@@ -74,7 +74,7 @@ impl Server {
     ///
     ///
     //////////////////////////////////////////////
-    
+
     /// Constants defining max number of running games and active connected users
     const MAX_USERS: usize = 50;
     const MAX_GAMES: usize = 5;
@@ -279,7 +279,6 @@ static LOGGER: SimpleLogger = SimpleLogger;
 ///
 ///
 //////////////////////////////////////////////
-
 mod client;
 #[cfg(test)]
 mod tests {
@@ -295,7 +294,7 @@ mod tests {
         thread::sleep(time::Duration::from_millis(100));
 
         let client1 = thread::spawn(|| {
-            let mut client = client::Network::connect(10., 10.12, 1020, 1000);
+            let mut client = client::Network::connect(10., 10.12, 1020, 1000).unwrap();
             assert_eq!(client.create_room().unwrap(), 1_u16);
             thread::sleep(time::Duration::from_millis(1000));
             client.lock_room(client::Game::Test);
@@ -320,7 +319,7 @@ mod tests {
         thread::sleep(time::Duration::from_millis(20));
 
         let client2 = thread::spawn(|| {
-            let mut client = client::Network::connect(10., 10., 1000, 1000);
+            let mut client = client::Network::connect(10., 10., 1000, 1000).unwrap();
             assert_eq!(client.create_room().unwrap(), 2_u16);
             thread::sleep(time::Duration::from_millis(200));
         });
@@ -328,7 +327,7 @@ mod tests {
         thread::sleep(time::Duration::from_millis(10));
 
         let client3 = thread::spawn(|| {
-            let mut client = client::Network::connect(10., 10., 1000, 1000);
+            let mut client = client::Network::connect(10., 10., 1000, 1000).unwrap();
             client.join_room(1).unwrap();
             thread::sleep(time::Duration::from_millis(1000));
             loop {
