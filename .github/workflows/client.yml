@@ -1,0 +1,52 @@
+name : Client
+
+on:
+  workflow_dispatch:
+  push:
+    branches : ["main"]
+    paths : "client/**"
+
+  pull_request:
+    branches: ["main"]
+    paths : "client/**"
+  release:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    permissions:
+      content: write
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        submodules: true
+
+    - name: Init
+      run: yes | make init
+      shell: bash
+      working-directory: client
+
+    - name: Set env
+      run: export NDK_HOME=$PWD/android/ndk
+      shell: bash
+      working-directory: client
+
+    - name: Build app
+      run: make app MODE=release
+      shell: bash
+      working-directory: client/app
+
+    - name: Upload Release
+      uses: actions/upload-release-assets@v1.0.1
+      env:
+        GITHUB_TOKEN : ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{github.event.release.upload_url}}
+        asset_path: ./client/app/phone_tile.apk
+        asset_name: phone_tile.apk
+        asset_content_type: application/apk
