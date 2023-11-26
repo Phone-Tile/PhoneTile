@@ -4,7 +4,9 @@ on:
   workflow_dispatch:
   push:
     branches : ["main", "actions-client"]
-    paths : "client/**"
+    paths :
+      - "client/**"
+      - ".github/workflow/client.yml"
 
   pull_request:
     branches: ["main"]
