@@ -1,6 +1,6 @@
 #![allow(unused)]
 use log::{error, info, warn};
-use std::io::{self, Write};
+use std::io::{self, Error, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::mpsc::{self, TryRecvError};
 use std::thread;
@@ -8,10 +8,10 @@ use std::time;
 use std::vec::Vec;
 
 mod connection;
-mod game;
 mod packet;
 mod pipe;
 pub mod player;
+mod room;
 
 /// The general pipe system will be the following :
 ///
@@ -27,9 +27,17 @@ pub mod player;
 ///
 ///
 
+//////////////////////////////////////////////
+///
+///
+/// Local structure for the pipe system, I might move it right now
+///
+///
+//////////////////////////////////////////////
+
 /// This structure save the handler and the pipes for game threads
 struct LocalGame {
-    handle: thread::JoinHandle<()>,
+    handle: thread::JoinHandle<Result<(), Error>>,
     token: u16,
     sender: mpsc::Sender<pipe::ServerMessage>,
 }
@@ -39,6 +47,14 @@ struct LocalConnection {
     handle: thread::JoinHandle<()>,
     token: u16,
 }
+
+//////////////////////////////////////////////
+///
+///
+/// Server
+///
+///
+//////////////////////////////////////////////
 
 pub struct Server {
     target: String,
@@ -51,9 +67,25 @@ pub struct Server {
 }
 
 impl Server {
+    //////////////////////////////////////////////
+    ///
+    ///
+    /// Constants
+    ///
+    ///
+    //////////////////////////////////////////////
+    
     /// Constants defining max number of running games and active connected users
     const MAX_USERS: usize = 50;
     const MAX_GAMES: usize = 5;
+
+    //////////////////////////////////////////////
+    ///
+    ///
+    /// Manager
+    ///
+    ///
+    //////////////////////////////////////////////
 
     pub fn new() -> Server {
         let (send, recv) = mpsc::channel();
@@ -66,78 +98,6 @@ impl Server {
             room_token: 1,
             sender: send,
             receiver: recv,
-        }
-    }
-
-    /// First handler of incomming connexions, is responsible to lauch the thread and build the local user structure
-    fn first_handler(&self, stream: TcpStream, &token: &u16) -> thread::JoinHandle<()> {
-        let sender = self.sender.clone();
-        thread::spawn(move || {
-            let mut c = connection::Connection::new(stream, token, sender);
-            c.manager();
-        })
-    }
-
-    fn handle_connection_pipe_message(&mut self, message: pipe::ServerMessage) {
-        match message.flag {
-            pipe::ServerMessageFlag::Create => {
-                let (sender, receiver) = mpsc::channel();
-
-                let mut game = game::Game::new(receiver, self.room_token);
-                // game.add_player(message.sender);
-
-                self.games.push(LocalGame {
-                    handle: thread::spawn(move || game.manager()),
-                    token: self.room_token,
-                    sender: sender.clone(),
-                });
-
-                match sender.send(message) {
-                    Ok(_) => {}
-                    Err(e) => {
-                        error!(target: self.target.as_str(), "room {} pipe disconnected after creation",self.room_token)
-                    }
-                }
-
-                self.room_token += 1;
-            }
-            pipe::ServerMessageFlag::Join => {
-                for g in self.games.iter() {
-                    if g.token == message.room_token {
-                        match g.sender.send(message) {
-                            Ok(_) => {}
-                            Err(e) => {
-                                error!(target: self.target.as_str(), "room {} pipe disconnected",self.room_token)
-                            }
-                        }
-                        return;
-                    }
-                }
-                // TODO: Add error message in the communication protocol for this case !
-                // Or at least send an general error message back to the client !
-                warn!(target: self.target.as_str(), "Unable to locate the game {}", message.room_token);
-            }
-        }
-    }
-
-    fn handle_connection_pipe(&mut self) {
-        loop {
-            match self.receiver.try_recv() {
-                Ok(m) => self.handle_connection_pipe_message(m),
-                Err(TryRecvError::Empty) => break,
-                Err(TryRecvError::Disconnected) => panic!("pipe sender dropped"), // should never happened
-            }
-        }
-    }
-
-    fn update_connections_status(&mut self) {
-        let mut i: usize = 0;
-        while i < self.connections.len() {
-            if self.connections[i].handle.is_finished() {
-                self.connections.swap_remove(i);
-            } else {
-                i += 1;
-            }
         }
     }
 
@@ -198,7 +158,95 @@ impl Server {
         }
         Ok(())
     }
+
+    //////////////////////////////////////////////
+    ///
+    ///
+    /// Helpers
+    ///
+    ///
+    //////////////////////////////////////////////
+
+    /// First handler of incomming connexions, is responsible to lauch the thread and build the local user structure
+    fn first_handler(&self, stream: TcpStream, &token: &u16) -> thread::JoinHandle<()> {
+        let sender = self.sender.clone();
+        thread::spawn(move || {
+            let mut c = connection::Connection::new(stream, token, sender);
+            c.manager();
+        })
+    }
+
+    fn handle_connection_pipe_message(&mut self, message: pipe::ServerMessage) {
+        match message.flag {
+            pipe::ServerMessageFlag::Create => {
+                let (sender, receiver) = mpsc::channel();
+
+                let mut game = room::Room::new(receiver, self.room_token);
+                // game.add_player(message.sender);
+
+                self.games.push(LocalGame {
+                    handle: thread::spawn(move || game.manager()),
+                    token: self.room_token,
+                    sender: sender.clone(),
+                });
+
+                match sender.send(message) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        error!(target: self.target.as_str(), "room {} pipe disconnected after creation",self.room_token)
+                    }
+                }
+
+                self.room_token += 1;
+            }
+            pipe::ServerMessageFlag::Join => {
+                for g in self.games.iter() {
+                    if g.token == message.room_token {
+                        match g.sender.send(message) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                error!(target: self.target.as_str(), "room {} pipe disconnected",self.room_token)
+                            }
+                        }
+                        return;
+                    }
+                }
+                // TODO: Add error message in the communication protocol for this case !
+                // Or at least send an general error message back to the client !
+                warn!(target: self.target.as_str(), "Unable to locate the game {}", message.room_token);
+            }
+        }
+    }
+
+    fn handle_connection_pipe(&mut self) {
+        loop {
+            match self.receiver.try_recv() {
+                Ok(m) => self.handle_connection_pipe_message(m),
+                Err(TryRecvError::Empty) => break,
+                Err(TryRecvError::Disconnected) => panic!("pipe sender dropped"), // should never happened
+            }
+        }
+    }
+
+    fn update_connections_status(&mut self) {
+        let mut i: usize = 0;
+        while i < self.connections.len() {
+            if self.connections[i].handle.is_finished() {
+                self.connections.swap_remove(i);
+            } else {
+                i += 1;
+            }
+        }
+    }
 }
+
+//////////////////////////////////////////////
+///
+///
+/// Log system, might go in main for other modules to use it too
+///
+///
+//////////////////////////////////////////////
 
 /// Log interface
 struct SimpleLogger;
@@ -211,8 +259,8 @@ impl log::Log for SimpleLogger {
     fn log(&self, record: &log::Record) {
         if self.enabled(record.metadata()) {
             println!(
-                "[ {} ] {:>30} -- {}",
-                record.level(),
+                "{:<10}{:>30} -- {}",
+                format!("[ {} ]", record.level()).as_str(),
                 record.target(),
                 record.args()
             );
@@ -223,6 +271,14 @@ impl log::Log for SimpleLogger {
 }
 
 static LOGGER: SimpleLogger = SimpleLogger;
+
+//////////////////////////////////////////////
+///
+///
+/// Tests
+///
+///
+//////////////////////////////////////////////
 
 mod client;
 #[cfg(test)]
@@ -239,10 +295,10 @@ mod tests {
         thread::sleep(time::Duration::from_millis(100));
 
         let client1 = thread::spawn(|| {
-            let mut client = client::Network::connect(10., 10., 1000, 1000);
+            let mut client = client::Network::connect(10., 10.12, 1020, 1000);
             assert_eq!(client.create_room().unwrap(), 1_u16);
             thread::sleep(time::Duration::from_millis(1000));
-            client.lock_room();
+            client.lock_room(client::Game::Test);
             loop {
                 match client.get_status() {
                     client::Status::InLockRoom(r) => break,
@@ -292,6 +348,5 @@ mod tests {
         client1.join().unwrap();
         client2.join().unwrap();
         client3.join().unwrap();
-        panic!("Make this test fail");
     }
 }

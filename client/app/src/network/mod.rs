@@ -11,7 +11,6 @@ pub enum Status {
     Connected,
     Disconnected,
     InRoom,
-    SelectedGame,
     InLockRoom(u8),
     InGame,
 }

@@ -5,17 +5,40 @@ use std::io::ErrorKind;
 use std::sync::mpsc;
 use std::sync::mpsc::TryRecvError;
 
+//////////////////////////////////////////////
+///
+///
+/// Player structure
+///
+///
+//////////////////////////////////////////////
+
 pub struct Player {
     pub sender: mpsc::Sender<pipe::GameMessage>,
     pub receiver: mpsc::Receiver<pipe::GameMessage>,
 
     pub rank: u8,
+    pub physical_height: f32,
+    pub physical_width: f32,
+    pub window_height: u32,
+    pub window_width: u32,
 }
 
 impl Player {
     /// Send data to the associated client
-    pub fn send(&mut self, data: &[u8; packet::MAX_DATA_SIZE]) -> Result<(), Error> {
-        match self.sender.send(pipe::GameMessage::data_message(*data)) {
+    pub fn send(&mut self, raw_data: &[u8]) -> Result<(), Error> {
+        let mut data = [0_u8; packet::MAX_DATA_SIZE];
+        let size = raw_data.len();
+        if (size > packet::MAX_DATA_SIZE) {
+            panic!("Trying to send too much data");
+        }
+        if (size > 0) {
+            data[..size].copy_from_slice(raw_data);
+        }
+        match self
+            .sender
+            .send(pipe::GameMessage::data_message(data, size))
+        {
             Ok(_) => Ok(()),
             Err(_) => Err(Error::new(ErrorKind::NotConnected, "client not connected")),
         }
