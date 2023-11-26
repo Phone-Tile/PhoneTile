@@ -5,12 +5,12 @@ on:
     branches: [ "main" ]
     paths :
       - "server/**"
-      - ".github/workflow/server.yml"
+      - ".github/workflows/server.yml"
   pull_request:
     branches: [ "main" ]
     paths :
       - "server/**"
-      - ".github/workflow/server.yml"
+      - ".github/workflows/server.yml"
 
 env:
   CARGO_TERM_COLOR: always

@@ -3,14 +3,17 @@ name : Client
 on:
   workflow_dispatch:
   push:
-    branches : ["main", "actions-client"]
+    branches : ["main"]
     paths :
       - "client/**"
-      - ".github/workflow/client.yml"
+      - ".github/workflows/client.yml"
 
   pull_request:
     branches: ["main"]
-    paths : "client/**"
+    paths :
+      - "client/**"
+      - ".github/workflows/client.yml"
+
   release:
 
 env:
