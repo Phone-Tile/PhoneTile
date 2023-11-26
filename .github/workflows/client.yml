@@ -3,7 +3,7 @@ name : Client
 on:
   workflow_dispatch:
   push:
-    branches : ["main", "actions-client"]
+    branches : ["main"]
     paths :
       - "client/**"
       - ".github/workflows/client.yml"
@@ -22,7 +22,7 @@ env:
 jobs:
   build:
     permissions:
-      content: write
+      contents: write
     runs-on: ubuntu-latest
 
     steps:
