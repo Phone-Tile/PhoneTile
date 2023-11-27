@@ -36,13 +36,8 @@ jobs:
       shell: bash
       working-directory: client
 
-    - name: Set env
-      run: export NDK_HOME=$PWD/android/ndk
-      shell: bash
-      working-directory: client
-
     - name: Build app
-      run: make app MODE=release
+      run: NDK_HOME=$PWD/../android/ndk make app MODE=release
       shell: bash
       working-directory: client/app
 
