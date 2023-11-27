@@ -1,7 +1,7 @@
 use std::ffi::{c_char, c_int};
 
-use raylib::{raylib_str, Color, DrawRectangle, DrawText, Rectangle};
-
+use raylib::{raylib_str, Color, DrawRectangle, DrawText, Rectangle, IsMouseButtonDown, IsMouseButtonPressed, IsMouseButtonReleased, MouseButton_MOUSE_BUTTON_LEFT, GetMousePosition};
+use std::convert::TryInto;
 use crate::ui::colors;
 
 pub struct Style {
@@ -68,7 +68,7 @@ impl Button {
     pub fn click(&self) -> bool {
         // check if click on the button
         unsafe {
-            if raylib::IsMouseButtonPressed(raylib::MouseButton_MOUSE_BUTTON_LEFT as i32) {
+            if raylib::IsMouseButtonReleased(raylib::MouseButton_MOUSE_BUTTON_LEFT as i32) {
                 let mouse_pos = raylib::GetMousePosition();
                 if self.loc.x < mouse_pos.x
                     && mouse_pos.x < self.loc.x + self.loc.width
@@ -81,12 +81,31 @@ impl Button {
             false
         }
     }
+    /* 
     pub fn change_foreground_color(&self, color: Color) {
-        todo!()
-        // change color
-        // each color has an associated color to change into
-        // want to know if I need to create an entirely new button
-    }
+        unsafe{
+            let x = self.loc.x;
+            let y = self.loc.y;
+            let mouse_pos = GetMousePosition();
+
+            if IsMouseButtonDown(MouseButton_MOUSE_BUTTON_LEFT.try_into().unwrap())
+            && x < mouse_pos.x && mouse_pos.x < x+self.loc.width
+            && y < mouse_pos.y && mouse_pos.y < y+self.loc.height {
+                Button::new(
+                    self.loc,
+                    Style::new(colors::WHITE, {match self.style.background {
+                        colors::YELLOW => colors::ORANGE,
+                        colors::GREEN => colors::BLUE,
+                        colors::BLUE => colors::PURPLE,
+                        colors::PURPLE => colors::PINK,
+                        _ => panic!("there shouldn't be any buttons of such color !")
+                    }}),
+                    Some(format!("Create")),
+                ).draw()
+            }
+        }
+        
+    }*/
     pub fn change_background_color(&self, color: Color) {
         todo!()
         // change color
@@ -125,6 +144,72 @@ pub fn join_room() -> Button {
     ) 
 }
 
+/* 
+pub fn game_select() -> Button {
+    Button::new(
+        raylib::Rectangle {
+            x: 200.0,
+            y: 400.0,
+            width: 1000.0,
+            height: 300.0,
+        },
+        Style::new(colors::WHITE, colors::GREEN),
+        Some(format!("Start1")),
+    ) 
+}*/
+
+pub fn start_game(screen_height: i32, screen_width: i32) -> Button {
+    Button::new(
+        raylib::Rectangle {
+            x: (screen_width as f32)*(1./4.) as f32,
+            y: screen_height*(6/9),
+            width: screen_width*(1/2),
+            height: screen_height*(2/9),
+        },
+        Style::new(colors::WHITE, colors::BLUE),
+        Some(format!("Start")),
+    ) 
+}
+
+pub fn racer() -> Button {
+    Button::new(
+        raylib::Rectangle {
+            x: 100.0,
+            y: 200.0,
+            width: 1000.0,
+            height: 300.0,
+        },
+        Style::new(colors::WHITE, colors::GREEN),
+        Some(format!("Racer")),
+    ) 
+}
+
+pub fn snake() -> Button {
+    Button::new(
+        raylib::Rectangle {
+            x: 300.0,
+            y: 400.0,
+            width: 1000.0,
+            height: 300.0,
+        },
+        Style::new(colors::WHITE, colors::GREEN),
+        Some(format!("Snake")),
+    ) 
+}
+
+pub fn golf() -> Button {
+    Button::new(
+        raylib::Rectangle {
+            x: 500.0,
+            y: 600.0,
+            width: 1000.0,
+            height: 300.0,
+        },
+        Style::new(colors::WHITE, colors::GREEN),
+        Some(format!("Golf")),
+    ) 
+}
+
 pub fn game_select() -> Button {
     Button::new(
         raylib::Rectangle {
@@ -137,34 +222,6 @@ pub fn game_select() -> Button {
         Some(format!("Start1")),
     ) 
 }
-
-pub fn start_game() -> Button {
-    Button::new(
-        raylib::Rectangle {
-            x: 100.0,
-            y: 200.0,
-            width: 1000.0,
-            height: 300.0,
-        },
-        Style::new(colors::WHITE, colors::BLUE),
-        Some(format!("Start2")),
-    ) 
-}
-
-/*
-pub fn start_game() -> Button {
-    Button::new(
-        raylib::Rectangle {
-            x: 100.0,
-            y: 200.0,
-            width: 1000.0,
-            height: 300.0,
-        },
-        Style::new(colors::WHITE, colors::BLUE),
-        Some(format!("Start2")),
-    ) 
-}
- */
 
 pub const RACER: Button = Button {
     loc: Rectangle {
