@@ -34,7 +34,7 @@ use ui::colors;
 // Main function
 #[no_mangle]
 extern "C" fn main() {
-    let mut network = network::Network::connect(1., 1., 1, 1);
+    let mut network = network::Network::connect(1., 1., 1, 1).unwrap();
     unsafe {
         //let game_selected: Option<Game> = None;
         TraceLog(
@@ -110,7 +110,7 @@ extern "C" fn main() {
                             button::LOCK_GAME_BUTTON.change_foreground_color(colors::BLUE);
                         };
                         if button::LOCK_GAME_BUTTON.click() {
-                            network.game_select();
+                            network.lock_room(network::Game::Test).unwrap();
                         }
 
                         DrawText(
@@ -123,16 +123,16 @@ extern "C" fn main() {
                         // if it is not the host :
                         // TEXT : waiting ...
                     }
-                    network::Status::SelectedGame => {
-                        // if host
-                        button::RACER.draw();
-                        if button::RACER.colision() {
-                            button::RACER.change_foreground_color(colors::BLUE);
-                        };
-                        if button::RACER.click() {
-                            network.lock_room().unwrap();
-                        }
-                    }
+                    // network::Status::SelectedGame => {
+                    //     // if host
+                    //     button::RACER.draw();
+                    //     if button::RACER.colision() {
+                    //         button::RACER.change_foreground_color(colors::BLUE);
+                    //     };
+                    //     if button::RACER.click() {
+                    //         network.lock_room(network::Game::Racer).unwrap();
+                    //     }
+                    // }
                     network::Status::InLockRoom(n) => {
                         // as char ?
                         DrawText(raylib_str!(format!("{n}")), 100, 200, 1000, colors::PURPLE);

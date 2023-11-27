@@ -1,6 +1,14 @@
 use std::sync::mpsc;
 
-use super::packet;
+use super::packet::{self, BUFFER_SIZE};
+
+//////////////////////////////////////////////
+///
+///
+/// Message destinated for the server
+///
+///
+//////////////////////////////////////////////
 
 pub enum ServerMessageFlag {
     Create,
@@ -9,26 +17,22 @@ pub enum ServerMessageFlag {
 
 pub struct ServerMessage {
     pub session_token: u16,
-    pub flag: ServerMessageFlag,
     pub room_token: u16,
+    pub flag: ServerMessageFlag,
     pub sender: mpsc::Sender<GameMessage>,
+    pub physical_height: f32,
+    pub physical_width: f32,
+    pub window_height: u32,
+    pub window_width: u32,
 }
 
-impl ServerMessage {
-    pub fn new(
-        usr_token: u16,
-        flag: ServerMessageFlag,
-        room_token: u16,
-        sender: mpsc::Sender<GameMessage>,
-    ) -> ServerMessage {
-        ServerMessage {
-            session_token: usr_token,
-            flag,
-            room_token,
-            sender,
-        }
-    }
-}
+//////////////////////////////////////////////
+///
+///
+/// Messages between clients and rooms
+///
+///
+//////////////////////////////////////////////
 
 pub enum GameMessageFlag {
     Init,
@@ -45,7 +49,8 @@ pub struct GameMessage {
 
     pub room_token: u16,
     pub sender: Option<mpsc::Sender<GameMessage>>,
-    pub rank: Option<u8>,
+    pub rank: Option<u16>,
+    pub size: usize,
     pub data: Option<[u8; packet::MAX_DATA_SIZE]>,
 }
 
@@ -56,16 +61,18 @@ impl GameMessage {
             room_token,
             sender: Some(sender),
             rank: None,
+            size: 0,
             data: None,
         }
     }
 
-    pub fn lock_message(rank: u8) -> Self {
+    pub fn lock_message(rank: u16) -> Self {
         GameMessage {
             flag: GameMessageFlag::Lock,
             room_token: 0,
             sender: None,
             rank: Some(rank),
+            size: 0,
             data: None,
         }
     }
@@ -76,16 +83,18 @@ impl GameMessage {
             room_token: 0,
             sender: None,
             rank: None,
+            size: 0,
             data: None,
         }
     }
 
-    pub fn data_message(data: [u8; packet::MAX_DATA_SIZE]) -> Self {
+    pub fn data_message(data: [u8; packet::MAX_DATA_SIZE], size: usize) -> Self {
         GameMessage {
             flag: GameMessageFlag::Data,
             room_token: 0,
             sender: None,
             rank: None,
+            size,
             data: Some(data),
         }
     }
@@ -96,6 +105,7 @@ impl GameMessage {
             room_token: 0,
             sender: None,
             rank: None,
+            size: 0,
             data: None,
         }
     }

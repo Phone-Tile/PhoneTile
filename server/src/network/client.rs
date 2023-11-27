@@ -1,9 +1,63 @@
 use super::packet;
+use std::fmt::{write, Display};
 use std::io::{Error, ErrorKind, Read, Write};
 use std::net::TcpStream;
 use std::{thread, time};
 
 /// All of those functions are completely non-blocking
+
+//////////////////////////////////////////////
+///
+///
+/// Game flag
+///
+///
+//////////////////////////////////////////////
+
+#[derive(Clone, Copy)]
+pub enum Game {
+    Racer,
+    Test,
+    Unknown,
+}
+
+impl From<Game> for u16 {
+    fn from(value: Game) -> Self {
+        match value {
+            Game::Racer => 1,
+            Game::Test => 0x80,
+            Game::Unknown => 0xff,
+        }
+    }
+}
+
+impl From<u16> for Game {
+    fn from(value: u16) -> Self {
+        match value {
+            1 => Game::Racer,
+            0x80 => Game::Test,
+            _ => Game::Unknown,
+        }
+    }
+}
+
+impl Display for Game {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Game::Racer => write!(f, "Racer"),
+            Game::Test => write!(f, "Test"),
+            Game::Unknown => write!(f, "Unknown"),
+        }
+    }
+}
+
+//////////////////////////////////////////////
+///
+///
+/// Status flag
+///
+///
+//////////////////////////////////////////////
 
 #[derive(Clone)]
 pub enum Status {
@@ -14,6 +68,14 @@ pub enum Status {
     InGame,
 }
 
+//////////////////////////////////////////////
+///
+///
+/// Network structure
+///
+///
+//////////////////////////////////////////////
+
 pub struct Network {
     stream: TcpStream,
     session_token: u16,
@@ -22,20 +84,13 @@ pub struct Network {
 }
 
 impl Network {
-    fn init_handshake(&mut self) -> Result<(), Error> {
-        let mut buffer = [0_u8; packet::MAX_DATA_SIZE + packet::HEADER_SIZE];
-        packet::Packet::new(packet::Flag::Init, 0, 0, 0, [0_u8; packet::MAX_DATA_SIZE])
-            .send_packet(&mut self.stream)
-            .unwrap();
-
-        match packet::Packet::recv_packet(&mut self.stream) {
-            Ok(packet) => {
-                self.session_token = packet.session;
-            }
-            Err(_) => panic!("Not well formed packet"),
-        }
-        Ok(())
-    }
+    //////////////////////////////////////////////
+    ///
+    ///
+    /// Pre-game
+    ///
+    ///
+    //////////////////////////////////////////////
 
     /// Connect to the server, you must do this action BEFORE ANYTHING ELSE
     pub fn connect(
@@ -43,64 +98,42 @@ impl Network {
         physical_width: f32,
         window_height: u32,
         window_width: u32,
-    ) -> Self {
+    ) -> Result<Self, Error> {
         match TcpStream::connect("127.0.0.1:8888") {
             Ok(stream) => {
+                stream.set_nonblocking(true)?;
                 let mut network = Network {
                     stream,
                     session_token: 0,
                     room_token: 0,
                     status: Status::Connected,
                 };
-                network.init_handshake().unwrap();
-                network
+                network.init_handshake(
+                    physical_height,
+                    physical_width,
+                    window_height,
+                    window_width,
+                )?;
+                Ok(network)
             }
-            Err(_) => panic!("Unabled to connect to server !"),
-        }
-    }
-
-    /// Send data to the server ; this action can only be done in game
-    /// If you use this function outisde of a game, this will simply discard the message
-    pub fn send(&mut self, data: &[u8; packet::MAX_DATA_SIZE]) {
-        let mut buffer = [0_u8; packet::BUFFER_SIZE];
-        packet::Packet::new(packet::Flag::Transmit, 0, self.session_token, 0, *data)
-            .send_packet(&mut self.stream)
-            .unwrap();
-    }
-
-    /// Receive data from the server ; this action can only be done in game
-    /// It return the amount of data read
-    pub fn recv(&mut self, buffer: &mut [u8; packet::MAX_DATA_SIZE]) -> bool {
-        match packet::Packet::recv_packet(&mut self.stream) {
-            Ok(packet) => {
-                buffer.copy_from_slice(&packet.data);
-                true
-            }
-            Err(e) if e.kind() == ErrorKind::WouldBlock => false,
-            Err(e) => panic!("{e}"),
+            Err(_) => Err(Error::new(
+                ErrorKind::NotConnected,
+                "unable to connect to the server",
+            )),
         }
     }
 
     /// Create a room and send back the ID of the room in order for the other
     /// to connect themselves to it
     pub fn create_room(&mut self) -> Result<u16, Error> {
-        let packet_room_creation = packet::Packet::new(
-            packet::Flag::Create,
-            0,
-            self.session_token,
-            0,
-            [0_u8; packet::MAX_DATA_SIZE],
-        );
+        let packet_room_creation =
+            packet::Packet::new(packet::Flag::Create, 0, self.session_token, 0, &[], 0);
         packet_room_creation.send_packet(&mut self.stream)?;
 
-        match packet::Packet::recv_packet(&mut self.stream) {
-            Ok(packet) => {
-                self.room_token = packet.room;
-                self.status = Status::InRoom;
-                Ok(packet.room)
-            }
-            Err(_) => panic!("Not well formed packet"),
-        }
+        let packet = packet::Packet::recv_packet(&mut self.stream)?;
+        self.room_token = packet.room;
+        self.status = Status::InRoom;
+        Ok(packet.room)
     }
 
     /// Join a room with the given room ID
@@ -110,56 +143,29 @@ impl Network {
             0,
             self.session_token,
             room_token,
-            [0_u8; packet::MAX_DATA_SIZE],
+            &[],
+            0,
         )
         .send_packet(&mut self.stream)?;
 
-        match packet::Packet::recv_packet(&mut self.stream) {
-            Ok(packet) => {
-                self.room_token = packet.room;
-                self.status = Status::InRoom;
-            }
-            Err(_) => panic!("Not well formed packet"),
-        }
+        let packet = packet::Packet::recv_packet(&mut self.stream)?;
+        self.room_token = packet.room;
+        self.status = Status::InRoom;
 
         Ok(())
-    }
-
-    /// Get the current status of the network
-    pub fn get_status(&mut self) -> Status {
-        match self.status {
-            Status::InRoom => match packet::Packet::try_recv_packet(&mut self.stream) {
-                Some(packet) => {
-                    self.status = Status::InLockRoom(packet.data[0]);
-                    self.status.clone()
-                }
-                None => self.status.clone(),
-            },
-            Status::InLockRoom(_) => {
-                let mut buffer = [0_u8; packet::MAX_DATA_SIZE + packet::HEADER_SIZE];
-                match self.stream.read_exact(&mut buffer) {
-                    Ok(_) => {
-                        self.status = Status::InGame;
-                        self.status.clone()
-                    }
-                    Err(e) if e.kind() == ErrorKind::WouldBlock => self.status.clone(),
-                    Err(e) => panic!("{e}"),
-                }
-            }
-            _ => self.status.clone(),
-        }
     }
 
     /// Lock the room, so that no more user can join the room
     /// The position of each user is given from this point when the get_status is triggered
     /// THIS FUNCTION WILL WORK ONLY IF create_room HAS BEEN CALLED BEFORE THAT
-    pub fn lock_room(&mut self) -> Result<(), Error> {
+    pub fn lock_room(&mut self, game_id: Game) -> Result<(), Error> {
         packet::Packet::new(
             packet::Flag::Lock,
             0,
             self.session_token,
             self.room_token,
-            [0_u8; packet::MAX_DATA_SIZE],
+            &[],
+            game_id.into(),
         )
         .send_packet(&mut self.stream)
     }
@@ -172,7 +178,8 @@ impl Network {
             0,
             self.session_token,
             self.room_token,
-            [0_u8; packet::MAX_DATA_SIZE],
+            &[],
+            0,
         )
         .send_packet(&mut self.stream)
         {
@@ -182,5 +189,89 @@ impl Network {
             }
             Err(e) => Err(e),
         }
+    }
+
+    //////////////////////////////////////////////
+    ///
+    ///
+    /// In-game
+    ///
+    ///
+    //////////////////////////////////////////////
+
+    /// Send data to the server ; this action can only be done in game
+    /// If you use this function outisde of a game, this will simply discard the message
+    pub fn send(&mut self, data: &[u8]) -> Result<(), Error> {
+        packet::Packet::new(packet::Flag::Transmit, 0, self.session_token, 0, data, 0)
+            .send_packet(&mut self.stream)
+    }
+
+    /// Receive data from the server ; this action can only be done in game
+    /// It return the amount of data read
+    pub fn recv(&mut self, buffer: &mut [u8; packet::MAX_DATA_SIZE]) -> bool {
+        match packet::Packet::try_recv_packet(&mut self.stream) {
+            Some(packet) => {
+                buffer.copy_from_slice(&packet.data);
+                true
+            }
+            None => false,
+        }
+    }
+
+    //////////////////////////////////////////////
+    ///
+    ///
+    /// Continuous
+    ///
+    ///
+    //////////////////////////////////////////////
+
+    /// Get the current status of the network
+    pub fn get_status(&mut self) -> Status {
+        match self.status {
+            Status::InRoom => match packet::Packet::try_recv_packet(&mut self.stream) {
+                Some(packet) => {
+                    self.status = Status::InLockRoom(packet.option as u8);
+                    self.status.clone()
+                }
+                None => self.status.clone(),
+            },
+            Status::InLockRoom(_) => match packet::Packet::try_recv_packet(&mut self.stream) {
+                Some(_) => {
+                    self.status = Status::InGame;
+                    self.status.clone()
+                }
+                None => self.status.clone(),
+            },
+            _ => self.status.clone(),
+        }
+    }
+
+    //////////////////////////////////////////////
+    ///
+    ///
+    /// Helpers
+    ///
+    ///
+    //////////////////////////////////////////////
+
+    fn init_handshake(
+        &mut self,
+        physical_height: f32,
+        physical_width: f32,
+        window_height: u32,
+        window_width: u32,
+    ) -> Result<(), Error> {
+        let mut data = [0_u8; 16];
+        data[..4].copy_from_slice(&physical_height.to_be_bytes());
+        data[4..8].copy_from_slice(&physical_width.to_be_bytes());
+        data[8..12].copy_from_slice(&window_height.to_be_bytes());
+        data[12..16].copy_from_slice(&window_width.to_be_bytes());
+
+        packet::Packet::new(packet::Flag::Init, 0, 0, 0, &data, 0).send_packet(&mut self.stream)?;
+
+        let packet = packet::Packet::recv_packet(&mut self.stream)?;
+        self.session_token = packet.session;
+        Ok(())
     }
 }

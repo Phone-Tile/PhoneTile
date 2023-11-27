@@ -1,4 +1,6 @@
 use std::convert::Into;
+use std::convert::TryFrom;
+use std::fmt::Display;
 use std::hash::BuildHasher;
 use std::io::{Error, ErrorKind, Read, Write};
 use std::net::TcpStream;
@@ -7,13 +9,87 @@ use std::time::{self, SystemTime};
 
 use log::info;
 
-pub const HEADER_SIZE: usize = 8;
-pub const MAX_DATA_SIZE: usize = 2040;
+//////////////////////////////////////////////
+///
+///
+/// Constants
+///
+///
+//////////////////////////////////////////////
+
+pub const HEADER_SIZE: usize = 12;
+pub const MAX_DATA_SIZE: usize = 2036;
 pub const BUFFER_SIZE: usize = HEADER_SIZE + MAX_DATA_SIZE;
 
-#[derive(Clone, Copy)]
+//////////////////////////////////////////////
+///
+///
+/// ProtocolError
+///
+///
+//////////////////////////////////////////////
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ProtocolError {
+    ServerDown,
+    GameCrashed,
+    RoomClosed,
+    InvalidPacket,
+    InvalidRequest,
+    Unknown,
+}
+
+impl From<u8> for ProtocolError {
+    fn from(mut orig: u8) -> Self {
+        orig -= 0x80_u8;
+        match orig {
+            1 => Self::ServerDown,
+            2 => Self::GameCrashed,
+            3 => Self::RoomClosed,
+            4 => Self::InvalidPacket,
+            5 => Self::InvalidRequest,
+            _ => Self::Unknown,
+        }
+    }
+}
+
+impl From<ProtocolError> for u8 {
+    fn from(orig: ProtocolError) -> Self {
+        match orig {
+            ProtocolError::ServerDown => 1 | 0x80_u8,
+            ProtocolError::GameCrashed => 2 | 0x80_u8,
+            ProtocolError::RoomClosed => 3 | 0x80_u8,
+            ProtocolError::InvalidPacket => 4 | 0x80_u8,
+            ProtocolError::InvalidRequest => 5 | 0x80_u8,
+            ProtocolError::Unknown => 0xff_u8,
+        }
+    }
+}
+
+impl Display for ProtocolError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ProtocolError::ServerDown => write!(f, "ServerDown"),
+            ProtocolError::GameCrashed => write!(f, "GameCrashed"),
+            ProtocolError::RoomClosed => write!(f, "RoomClosed"),
+            ProtocolError::InvalidPacket => write!(f, "InvalidPacket"),
+            ProtocolError::InvalidRequest => write!(f, "InvalidRequest"),
+            ProtocolError::Unknown => write!(f, "Unknown"),
+        }
+    }
+}
+
+//////////////////////////////////////////////
+///
+///
+/// Flag
+///
+///
+//////////////////////////////////////////////
+
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Flag {
-    Error,
+    Error(ProtocolError),
     Init,
     Create,
     Join,
@@ -22,6 +98,62 @@ pub enum Flag {
     Transmit,
     Unknown,
 }
+
+impl From<u8> for Flag {
+    fn from(orig: u8) -> Self {
+        if orig & 0x80_u8 == 0x80_u8 {
+            Flag::Error(orig.into())
+        } else {
+            match orig {
+                1 => Flag::Init,
+                2 => Flag::Create,
+                3 => Flag::Join,
+                4 => Flag::Lock,
+                5 => Flag::Launch,
+                6 => Flag::Transmit,
+                _ => Flag::Unknown,
+            }
+        }
+    }
+}
+
+impl From<Flag> for u8 {
+    fn from(orig: Flag) -> Self {
+        match orig {
+            Flag::Error(e) => e.into(),
+            Flag::Init => 1,
+            Flag::Create => 2,
+            Flag::Join => 3,
+            Flag::Lock => 4,
+            Flag::Launch => 5,
+            Flag::Transmit => 6,
+            Flag::Unknown => 0xff_u8,
+        }
+    }
+}
+
+impl Display for Flag {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Flag::Init => write!(f, "Init"),
+            Flag::Create => write!(f, "Create"),
+            Flag::Join => write!(f, "Join"),
+            Flag::Lock => write!(f, "Lock"),
+            Flag::Launch => write!(f, "Launch"),
+            Flag::Transmit => write!(f, "Transmit"),
+            Flag::Error(e) => write!(f, "Error : {}", e),
+            Flag::Unknown => write!(f, "Unknown"),
+        }
+    }
+}
+
+//////////////////////////////////////////////
+///
+///
+/// Version
+///
+///
+//////////////////////////////////////////////
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug)]
@@ -39,21 +171,6 @@ impl From<u8> for Version {
     }
 }
 
-impl From<u8> for Flag {
-    fn from(orig: u8) -> Self {
-        match orig {
-            0 => Flag::Error,
-            1 => Flag::Init,
-            2 => Flag::Create,
-            3 => Flag::Join,
-            4 => Flag::Lock,
-            5 => Flag::Launch,
-            6 => Flag::Transmit,
-            _ => Flag::Unknown,
-        }
-    }
-}
-
 impl From<Version> for u8 {
     fn from(val: Version) -> Self {
         match val {
@@ -63,12 +180,21 @@ impl From<Version> for u8 {
     }
 }
 
+//////////////////////////////////////////////
+///
+///
+/// Packet
+///
+///
+//////////////////////////////////////////////
+
 #[derive(Debug, Clone)]
 pub struct Packet {
     version: Version,
-    flag: u8,
+    flag: Flag,
     sync: u8,
-    size: usize,
+    pub size: usize,
+    pub option: u16,
     pub session: u16,
     pub room: u16,
     pub data: [u8; MAX_DATA_SIZE],
@@ -77,82 +203,41 @@ pub struct Packet {
 }
 
 impl Packet {
-    pub fn new(flag: Flag, sync: u8, session: u16, room: u16, data: [u8; MAX_DATA_SIZE]) -> Packet {
+    //////////////////////////////////////////////
+    ///
+    ///
+    /// Send/Recv packet
+    ///
+    ///
+    //////////////////////////////////////////////
+
+    pub fn new(
+        flag: Flag,
+        sync: u8,
+        session: u16,
+        room: u16,
+        raw_data: &[u8],
+        option: u16,
+    ) -> Packet {
+        let mut data = [0_u8; MAX_DATA_SIZE];
+        let size = raw_data.len();
+        if (size > MAX_DATA_SIZE) {
+            panic!("Trying to build a packet too large !");
+        }
+        if (size > 0) {
+            data[..size].copy_from_slice(raw_data);
+        }
         Packet {
             version: Version::V0,
-            flag: flag as u8,
+            flag,
             sync,
-            size: data.len(),
+            size,
+            option,
             session,
             room,
             data,
             processed_time: SystemTime::now(),
         }
-    }
-
-    fn unpack_u16(data: &[u8]) -> u16 {
-        ((data[0] as u16) << 8) + (data[1] as u16)
-    }
-
-    fn pack_u16(int: u16, slice: &mut [u8]) {
-        slice[0] = u8::try_from(int >> 8).unwrap();
-        slice[1] = u8::try_from(int & (0x00ff_u16)).unwrap();
-    }
-
-    fn process_v0_packet(packet: &[u8; BUFFER_SIZE]) -> Result<Self, Error> {
-        // if size != packet[3] as usize + HEADER_SIZE {
-        //     return Err("non-standard packet : packet size doesn't fit header info");
-        // }
-        let mut data = [0_u8; MAX_DATA_SIZE];
-        data.clone_from_slice(&packet[8..BUFFER_SIZE]);
-
-        Ok(Packet {
-            version: Version::V0,
-            flag: packet[1],
-            sync: packet[2],
-            size: packet[3] as usize,
-            session: Packet::unpack_u16(&packet[4..6]),
-            room: Packet::unpack_u16(&packet[6..8]),
-            data,
-
-            processed_time: SystemTime::now(),
-        })
-    }
-
-    /// Create a packet from raw data
-    fn unpack(packet: &[u8; BUFFER_SIZE]) -> Result<Self, Error> {
-        match packet[0].into() {
-            Version::V0 => Self::process_v0_packet(packet),
-            _ => Err(Error::new(
-                ErrorKind::InvalidData,
-                "non-standard packet : not recognized version",
-            )),
-        }
-    }
-
-    /// Pack in buffer the packet
-    fn pack(&self, packet: &mut [u8; BUFFER_SIZE]) {
-        packet[0] = self.version.into();
-        packet[1] = self.flag;
-        packet[2] = self.sync;
-        packet[3] = self.size as u8;
-        Self::pack_u16(self.session, &mut packet[4..6]);
-        Self::pack_u16(self.room, &mut packet[6..8]);
-        packet[8..].clone_from_slice(self.data.as_slice());
-    }
-
-    /// Get packet flag
-    pub fn get_flag(&self) -> Flag {
-        self.flag.into()
-    }
-
-    /// Produce a log in stdout
-    pub fn log_packet(&self) {
-        info!(target: "Packet", "Procesed at {:?} :", self.processed_time);
-        info!(target: "Packet", "\t Version : {}", self.version as u8);
-        info!(target: "Packet", "\t Size : {:?}", self.size + HEADER_SIZE);
-        info!(target: "Packet", "\t Session : {:?}", self.session);
-        info!(target: "Packet", "\t Room : {:?}", self.room);
     }
 
     /// Receive and unpack a packet, it will be blocking until it receives a packet or the pipe is procken
@@ -179,9 +264,145 @@ impl Packet {
     /// Send the packet
     pub fn send_packet(&self, stream: &mut TcpStream) -> Result<(), Error> {
         let mut buffer = [0_u8; BUFFER_SIZE];
-
         self.pack(&mut buffer);
         stream.write_all(&buffer)
+    }
+
+    //////////////////////////////////////////////
+    ///
+    ///
+    /// Sanity check
+    ///
+    ///
+    //////////////////////////////////////////////
+
+    pub fn check_packet_flag(&self, flag: Flag) -> Result<(), Error> {
+        if self.flag == flag {
+            Ok(())
+        } else {
+            Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!(
+                    "received the flag {} while expecting a {} packet",
+                    self.flag, flag,
+                ),
+            ))
+        }
+    }
+
+    //////////////////////////////////////////////
+    ///
+    ///
+    /// Prebuilt packet
+    ///
+    ///
+    //////////////////////////////////////////////
+
+    pub fn error_message(session_token: u16) -> Packet {
+        Self::new(
+            Flag::Error(ProtocolError::Unknown),
+            0,
+            session_token,
+            0,
+            &[0_u8; MAX_DATA_SIZE],
+            0,
+        )
+    }
+
+    //////////////////////////////////////////////
+    ///
+    ///
+    /// Info functions
+    ///
+    ///
+    //////////////////////////////////////////////
+
+    /// Get packet flag
+    pub fn get_flag(&self) -> Flag {
+        self.flag
+    }
+
+    /// Produce a log in stdout
+    pub fn log_packet(&self) {
+        info!(target: "Packet", "Procesed at {:?} :", self.processed_time);
+        info!(target: "Packet", "\t Version : {}", self.version as u8);
+        info!(target: "Packet", "\t Size : {:?}", self.size + HEADER_SIZE);
+        info!(target: "Packet", "\t Session : {:?}", self.session);
+        info!(target: "Packet", "\t Room : {:?}", self.room);
+    }
+
+    //////////////////////////////////////////////
+    ///
+    ///
+    /// Packet processing
+    ///
+    ///
+    //////////////////////////////////////////////
+
+    /// Create a packet from raw data
+    fn unpack(packet: &[u8; BUFFER_SIZE]) -> Result<Self, Error> {
+        match packet[0].into() {
+            Version::V0 => Self::process_v0_packet(packet),
+            _ => Err(Error::new(
+                ErrorKind::InvalidData,
+                "non-standard packet : not recognized version",
+            )),
+        }
+    }
+
+    /// Pack in buffer the packet
+    fn pack(&self, packet: &mut [u8; BUFFER_SIZE]) {
+        packet[0] = self.version.into();
+        packet[1] = self.flag.into();
+        packet[2] = self.sync;
+        Self::pack_u16(self.size as u16, &mut packet[4..6]);
+        Self::pack_u16(self.option, &mut packet[6..8]);
+        Self::pack_u16(self.session, &mut packet[8..10]);
+        Self::pack_u16(self.room, &mut packet[10..12]);
+        packet[HEADER_SIZE..].clone_from_slice(self.data.as_slice());
+    }
+
+    //////////////////////////////////////////////
+    ///
+    ///
+    /// Helpers
+    ///
+    ///
+    //////////////////////////////////////////////
+
+    fn process_v0_packet(packet: &[u8; BUFFER_SIZE]) -> Result<Self, Error> {
+        let mut data = [0_u8; MAX_DATA_SIZE];
+        let size = Packet::unpack_u16(&packet[4..6]) as usize;
+
+        if size > MAX_DATA_SIZE {
+            panic!("Not well formed packet")
+        }
+
+        if size > 0 {
+            data[..size].clone_from_slice(&packet[HEADER_SIZE..HEADER_SIZE + size]);
+        }
+
+        Ok(Packet {
+            version: Version::V0,
+            flag: packet[1].into(),
+            sync: packet[2],
+            size,
+            option: Packet::unpack_u16(&packet[6..8]),
+            session: Packet::unpack_u16(&packet[8..10]),
+            room: Packet::unpack_u16(&packet[10..12]),
+            data,
+
+            processed_time: SystemTime::now(),
+        })
+    }
+
+    fn unpack_u16(data: &[u8]) -> u16 {
+        ((data[0] as u16) << 8) + (data[1] as u16)
+    }
+
+    fn pack_u16(int: u16, slice: &mut [u8]) {
+        slice[0] = u8::try_from(int >> 8).unwrap();
+        slice[1] = u8::try_from(int & (0x00ff_u16)).unwrap();
     }
 
     fn block_read_exact(stream: &mut TcpStream, buf: &mut [u8]) -> Result<(), Error> {
@@ -193,9 +414,5 @@ impl Packet {
             }
             thread::sleep(time::Duration::from_millis(30));
         }
-    }
-
-    pub fn error_message(session_token: u16) -> Packet {
-        Self::new(Flag::Error, 0, session_token, 0, [0_u8; MAX_DATA_SIZE])
     }
 }
