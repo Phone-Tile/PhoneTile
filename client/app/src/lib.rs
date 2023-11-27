@@ -1,5 +1,5 @@
 use std::convert::TryInto;
-use std::ffi::c_char;
+use std::ffi::{c_char, c_float, c_int};
 use std::time;
 
 extern crate raylib;
@@ -55,8 +55,6 @@ extern "C" fn main() {
 
         let mut is_host = false;
 
-        // game selected
-
         while !WindowShouldClose() {
             draw!({
                 ClearBackground(colors::BLACK);
@@ -64,15 +62,15 @@ extern "C" fn main() {
                 match network.get_status() {
                     network::Status::Connected => {
                         DrawText(
-                            raylib_str!("Waiting ..."),
-                            100,
-                            200,
-                            100,
+                            raylib_str!("Phone Tile"),
+                            0,
+                            ((screen_height as f32)*(1./11.)) as c_int,
+                            ((screen_height as f32)*(3./11.)) as c_int,
                             colors::WHITE,
                         );
 
-                        button::create_room().draw();
-                        button::join_room().draw();
+                        button::create_room(screen_height, screen_width).draw();
+                        button::join_room(screen_height, screen_width).draw();
 
                         /* 
                         if button::create_room().colision() {
@@ -81,14 +79,13 @@ extern "C" fn main() {
                         if button::join_room().colision() {
                             button::join_room().change_foreground_color(colors::BLUE);
                         };*/
-                        if button::create_room().click() {
+                        if button::create_room(screen_height, screen_width).click() {
                             is_host = true;
                             room = network.create_room().unwrap();
                         };
-                        if button::join_room().click() {
-                            // TYPE ID;
+                        if button::join_room(screen_height, screen_width).click() {
+                            // TODO : TYPE ID;
                             network.join_room(1).unwrap();
-                            //TEXT : WAITING ...
                         }
                     }
                     network::Status::Disconnected => {
@@ -102,28 +99,28 @@ extern "C" fn main() {
                     }
                     network::Status::InRoom => {
                         if is_host {
-                            button::racer().draw();
-                            button::snake().draw();
-                            button::golf().draw();
-                        /*if button::game_select().colision() {
-                            button::game_select().change_foreground_color(colors::BLUE);
-                        };*/
-                        if button::racer().click() {
-                            network.lock_room(network::Game::Racer).unwrap();
-                        }
-                        if button::snake().click() {
-                            network.lock_room(network::Game::Test).unwrap();
-                        }
-                        if button::golf().click() {
-                            network.lock_room(network::Game::Unknown).unwrap();
-                        }
-                        DrawText(
-                            raylib_str!(format!("{}", room)),
-                            500,
-                            1500,
-                            300,
-                            colors::WHITE,
-                        );
+                            DrawText(
+                                raylib_str!(format!("{}", room)),
+                                0,
+                                ((screen_height as f32)*(1./13.)) as c_int,
+                                ((screen_height as f32)*(2./13.)) as c_int,
+                                colors::WHITE,
+                            );
+                            button::racer(screen_height, screen_width).draw();
+                            button::snake(screen_height, screen_width).draw();
+                            button::golf(screen_height, screen_width).draw();
+                            /*if button::GAME().colision() {
+                                button::GAME().change_foreground_color(colors::BLUE);
+                            };*/
+                            if button::racer(screen_height, screen_width).click() {
+                                network.lock_room(network::Game::Racer).unwrap();
+                            }
+                            if button::snake(screen_height, screen_width).click() {
+                                network.lock_room(network::Game::Test).unwrap();
+                            }
+                            if button::golf(screen_height, screen_width).click() {
+                                network.lock_room(network::Game::Unknown).unwrap();
+                            }
                         } else {
                             DrawText(
                                 raylib_str!("Waiting ..."),
@@ -145,8 +142,13 @@ extern "C" fn main() {
                     //     }
                     // }
                     network::Status::InLockRoom(n) => {
-                        // as char ?
-                        DrawText(raylib_str!(format!("{n}")), 100, 200, 1000, colors::PURPLE);
+                        DrawText(
+                            raylib_str!(format!("{n}")),
+                            0,
+                            ((screen_height as f32)*(1./9.)) as c_int,
+                            ((screen_height as f32)*(3./9.)) as c_int,
+                            colors::PURPLE
+                        );
                         if is_host {
                             button::start_game(screen_height, screen_width).draw();
                             /*if button::start_game().colision() {

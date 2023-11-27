@@ -1,4 +1,4 @@
-use std::ffi::{c_char, c_int};
+use std::ffi::{c_char, c_int, c_float};
 
 use raylib::{raylib_str, Color, DrawRectangle, DrawText, Rectangle, IsMouseButtonDown, IsMouseButtonPressed, IsMouseButtonReleased, MouseButton_MOUSE_BUTTON_LEFT, GetMousePosition};
 use std::convert::TryInto;
@@ -118,26 +118,26 @@ pub trait Draw {
 
 /*** all useful buttons ***/
 
-pub fn create_room() -> Button {
+pub fn create_room(screen_height: i32, screen_width: i32) -> Button {
     Button::new(
         raylib::Rectangle {
             x: 200.0,
-            y: 200.0,
+            y: (screen_height as f32)*(5./11.) as c_float,
             width: 1000.0,
-            height: 300.0,
+            height: (screen_height as f32)*(2./11.) as c_float,
         },
         Style::new(colors::WHITE, colors::YELLOW),
         Some(format!("Create")),
     )
 }
 
-pub fn join_room() -> Button {
+pub fn join_room(screen_height: i32, screen_width: i32) -> Button {
     Button::new(
         raylib::Rectangle {
             x: 200.0,
-            y: 700.0,
+            y: (screen_height as f32)*(8./11.) as c_float,
             width: 1000.0,
-            height: 300.0,
+            height: (screen_height as f32)*(2./11.) as c_float,
         },
         Style::new(colors::WHITE, colors::YELLOW),
         Some(format!("Join")),
@@ -161,55 +161,56 @@ pub fn game_select() -> Button {
 pub fn start_game(screen_height: i32, screen_width: i32) -> Button {
     Button::new(
         raylib::Rectangle {
-            x: (screen_width as f32)*(1./4.) as f32,
-            y: screen_height*(6/9),
-            width: screen_width*(1/2),
-            height: screen_height*(2/9),
+            x: (screen_width as f32)*(1./4.) as c_float,
+            y: (screen_height as f32)*(6./9.) as c_float,
+            width: (screen_width as f32)*(1./2.) as c_float,
+            height: (screen_height as f32)*(2./9.) as c_float,
         },
         Style::new(colors::WHITE, colors::BLUE),
         Some(format!("Start")),
     ) 
 }
 
-pub fn racer() -> Button {
+pub fn racer(screen_height: i32, screen_width: i32) -> Button {
     Button::new(
         raylib::Rectangle {
             x: 100.0,
-            y: 200.0,
+            y: (screen_height as f32)*(4./13.) as c_float,
             width: 1000.0,
-            height: 300.0,
+            height: (screen_height as f32)*(2./13.) as c_float,
         },
         Style::new(colors::WHITE, colors::GREEN),
         Some(format!("Racer")),
     ) 
 }
 
-pub fn snake() -> Button {
+pub fn snake(screen_height: i32, screen_width: i32) -> Button {
     Button::new(
         raylib::Rectangle {
-            x: 300.0,
-            y: 400.0,
+            x: 100.0,
+            y: (screen_height as f32)*(7./13.) as c_float,
             width: 1000.0,
-            height: 300.0,
+            height: (screen_height as f32)*(2./13.) as c_float,
         },
         Style::new(colors::WHITE, colors::GREEN),
         Some(format!("Snake")),
     ) 
 }
 
-pub fn golf() -> Button {
+pub fn golf(screen_height: i32, screen_width: i32) -> Button {
     Button::new(
         raylib::Rectangle {
-            x: 500.0,
-            y: 600.0,
+            x: 100.0,
+            y: (screen_height as f32)*(10./13.) as c_float,
             width: 1000.0,
-            height: 300.0,
+            height: (screen_height as f32)*(2./13.) as c_float,
         },
         Style::new(colors::WHITE, colors::GREEN),
         Some(format!("Golf")),
     ) 
 }
 
+/*
 pub fn game_select() -> Button {
     Button::new(
         raylib::Rectangle {
@@ -221,7 +222,7 @@ pub fn game_select() -> Button {
         Style::new(colors::WHITE, colors::GREEN),
         Some(format!("Start1")),
     ) 
-}
+} */
 
 pub const RACER: Button = Button {
     loc: Rectangle {
