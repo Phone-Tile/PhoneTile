@@ -42,7 +42,8 @@ jobs:
     - name: Update Java
       uses: actions/setup-java@v3
       with:
-        java-version: '17'
+        java-version: 17
+        distribution: adopt
 
     - name: Init
       run: (yes 2>/dev/null | make init) || echo yes
