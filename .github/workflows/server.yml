@@ -3,10 +3,14 @@ name: Server
 on:
   push:
     branches: [ "main" ]
-    paths : "server/**"
+    paths :
+      - "server/**"
+      - ".github/workflows/server.yml"
   pull_request:
     branches: [ "main" ]
-    paths : "server/**"
+    paths :
+      - "server/**"
+      - ".github/workflows/server.yml"
 
 env:
   CARGO_TERM_COLOR: always

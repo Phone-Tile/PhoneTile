@@ -1,0 +1,67 @@
+name : Client
+
+on:
+  workflow_dispatch:
+  push:
+    branches : ["main"]
+    paths :
+      - "client/**"
+      - ".github/workflows/client.yml"
+
+  pull_request:
+    branches: ["main"]
+    paths :
+      - "client/**"
+      - ".github/workflows/client.yml"
+
+  release:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        submodules: true
+
+    - name: Update rust
+      run: rustup update
+      shell: bash
+
+    - name: Install rust targets
+      run : rustup target add armv7-linux-androideabi x86_64-linux-android i686-linux-android aarch64-linux-android
+      shell: bash
+
+    - name: Update Java
+      uses: actions/setup-java@v3
+      with:
+        java-version: 17
+        distribution: adopt
+
+    - name: Init
+      run: (yes 2>/dev/null | make init) || echo yes
+      shell: bash
+      working-directory: client
+
+    - name: Build app
+      run: NDK_HOME=$PWD/../android/ndk make app MODE=release
+      shell: bash
+      working-directory: client/app
+
+    - name: Upload Release
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN : ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{github.event.release.upload_url}}
+        asset_path: ./client/app/phone_tile.apk
+        asset_name: phone_tile.apk
+        asset_content_type: application/apk
+      if: github.event_name == 'release'
