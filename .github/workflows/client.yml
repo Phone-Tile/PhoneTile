@@ -44,6 +44,10 @@ jobs:
       shell: bash
       working-directory: client
 
+    - name: Test
+      run: ls ../android/sdk/build-tools && ls ../android/sdk/build-tools/29.0.3
+      working-directory: client/app
+
     - name: Build app
       run: NDK_HOME=$PWD/../android/ndk make app MODE=release
       shell: bash
