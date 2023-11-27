@@ -16,11 +16,11 @@ To use this app, you'll need several things :
 ## Server
 
 The app relies on a server so you'll need to use a computer and let the incomming traffic on the 8888 port go through.
-Look [here](https://github.com/Phone-Tile/PhoneTile/actions/workflows/server.yml/badge.svg?branch=main) for details on how to build and run the server.
+Look [here](https://github.com/Phone-Tile/PhoneTile/blob/main/server/README.md) for details on how to build and run the server.
 
 ## Client
 
-This part is the more fun ! You'll need to follow the 'not that complicated but long process" described [here](https://github.com/Phone-Tile/PhoneTile/actions/workflows/client.yml/badge.svg?branch=main).
+This part is the more fun ! You'll need to follow the 'not that complicated but long process" described [here](https://github.com/Phone-Tile/PhoneTile/blob/main/client/README.md).
 
 ## Usage
 
