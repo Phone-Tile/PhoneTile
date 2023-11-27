@@ -7,6 +7,9 @@ authors = [ " <lzebulon@archlinux>" ]
 name = "phone_tile"
 crate-type = ["cdylib"]
 
+[profil.release]
+strip = true
+
 [dependencies]
 raylib = {path = "../raylib"}
 native_app_glue = {path = "../native_app_glue"}

@@ -25,7 +25,13 @@ APP_NAME=PhoneTile
 
 RUST_APP_NAME=phone_tile
 
+PACKAGE_NAME=com.$(RUST_APP_NAME).game
+
 MODE?=debug
+
+ifeq ($(MODE),release)
+CARGO_FLAGS += --release
+endif
 
 
 FLAGS="-ffunction-sections -funwind-tables -fstack-protector-strong -fPIC -Wall \
@@ -43,67 +49,78 @@ app: $(RUST_APP_NAME).apk
 
 
 binaries:
-	#cargo build --target=aarch64-linux-android
-	cargo build --target=armv7-linux-androideabi
-	cargo build --target=i686-linux-android
-	cargo build	--target=x86_64-linux-android
+	cargo build --target=aarch64-linux-android   $(CARGO_FLAGS)
+	cargo build --target=armv7-linux-androideabi $(CARGO_FLAGS)
+	cargo build --target=i686-linux-android      $(CARGO_FLAGS)
+	cargo build --target=x86_64-linux-android    $(CARGO_FLAGS)
 
 
 android/$(RUST_APP_NAME).keystore:
+	mkdir -p android
 	cd android ; \
 	keytool -genkeypair -validity 1000 -dname "CN=$(RUST_APP_NAME),O=Android,C=ES" -keystore $(RUST_APP_NAME).keystore -storepass '$(RUST_APP_NAME)' -keypass '$(RUST_APP_NAME)' -alias projectKey -keyalg RSA ; \
 	cd ..
 
 
 $(RUST_APP_NAME).apk: binaries android/$(RUST_APP_NAME).keystore
+	rm -rf apk
 
-	cp assets/icon_ldpi.png android/build/res/drawable-ldpi/icon.png
-	cp assets/icon_mdpi.png android/build/res/drawable-mdpi/icon.png
-	cp assets/icon_hdpi.png android/build/res/drawable-hdpi/icon.png
-	cp assets/icon_xhdpi.png android/build/res/drawable-xhdpi/icon.png
+	mkdir -p apk/assets
 
-	cp assets/* android/build/assets
+	mkdir -p apk/res/drawable-ldpi
+	mkdir -p apk/res/drawable-mdpi
+	mkdir -p apk/res/drawable-hdpi
+	mkdir -p apk/res/drawable-xhdpi
 
-	$(BUILD_TOOLS)/aapt package -f -m \
-		-S android/build/res -J android/build/src -M android/build/AndroidManifest.xml \
-		-I $(PREFIX)/android/sdk/platforms/android-29/android.jar
+	cp assets/icon_ldpi.png apk/res/drawable-ldpi/icon.png
+	cp assets/icon_mdpi.png apk/res/drawable-mdpi/icon.png
+	cp assets/icon_hdpi.png apk/res/drawable-hdpi/icon.png
+	cp assets/icon_xhdpi.png apk/res/drawable-xhdpi/icon.png
 
-# Compile NativeLoader.java
-	javac -verbose -source 1.8 -target 1.8 -d android/build/obj \
-		-bootclasspath jre/lib/rt.jar \
-		-classpath $(PREFIX)/android/sdk/platforms/android-29/android.jar:android/build/obj \
-		-sourcepath src android/build/src/com/$(RUST_APP_NAME)/game/R.java \
-		android/build/src/com/$(RUST_APP_NAME)/game/NativeLoader.java
-
-	$(BUILD_TOOLS)/dx --verbose --dex --output=android/build/dex/classes.dex android/build/obj
+	cp assets/* apk/assets
 
 # Add resources and assets to APK
-	$(BUILD_TOOLS)/aapt package -f \
-		-M android/build/AndroidManifest.xml -S android/build/res -A assets \
-		-I $(PREFIX)/android/sdk/platforms/android-29/android.jar -F $(RUST_APP_NAME).apk android/build/dex
 	mkdir -p android
-	mkdir -p android/build/lib/x86_64
-	mkdir -p android/build/lib/x86
-	mkdir -p android/build/lib/armeabi-v7a
-	cp target/x86_64-linux-android/$(MODE)/lib$(RUST_APP_NAME).so android/build/lib/x86_64/lib$(RUST_APP_NAME).so
-	cp target/i686-linux-android/$(MODE)/lib$(RUST_APP_NAME).so android/build/lib/x86/lib$(RUST_APP_NAME).so
-	cp target/armv7-linux-androideabi/$(MODE)/lib$(RUST_APP_NAME).so android/build/lib/armeabi-v7a/lib$(RUST_APP_NAME).so
+	mkdir -p apk/lib/x86_64
+	mkdir -p apk/lib/x86
+	mkdir -p apk/lib/armeabi-v7a
+	mkdir -p apk/lib/aarch64
+	cp target/x86_64-linux-android/$(MODE)/lib$(RUST_APP_NAME).so apk/lib/x86_64/lib$(RUST_APP_NAME).so
+	cp target/i686-linux-android/$(MODE)/lib$(RUST_APP_NAME).so apk/lib/x86/lib$(RUST_APP_NAME).so
+	cp target/aarch64-linux-android/$(MODE)/lib$(RUST_APP_NAME).so apk/lib/aarch64/lib$(RUST_APP_NAME).so
+	cp target/armv7-linux-androideabi/$(MODE)/lib$(RUST_APP_NAME).so apk/lib/armeabi-v7a/lib$(RUST_APP_NAME).so
 
-# Add libraries to APK
-	cd android/build ; \
-		$(BUILD_TOOLS)/aapt add ../../$(RUST_APP_NAME).apk lib/armeabi-v7a/lib$(RUST_APP_NAME).so ; \
-		$(BUILD_TOOLS)/aapt add ../../$(RUST_APP_NAME).apk lib/x86_64/lib$(RUST_APP_NAME).so ; \
-		$(BUILD_TOOLS)/aapt add ../../$(RUST_APP_NAME).apk lib/x86/lib$(RUST_APP_NAME).so ; \
-	cd ../..
+	$(BUILD_TOOLS)/aapt package -f -F temp.apk \
+		-S apk/res -M AndroidManifest.xml \
+		-A apk/assets \
+		-I $(PREFIX)/android/sdk/platforms/android-29/android.jar -v
 
-	jarsigner -keystore android/$(RUST_APP_NAME).keystore -storepass $(RUST_APP_NAME) -keypass $(RUST_APP_NAME) \
-		-signedjar $(RUST_APP_NAME).apk $(RUST_APP_NAME).apk projectKey
+	unzip -o temp.apk -d apk
+	rm -rf apk.apk
 
-	$(BUILD_TOOLS)/zipalign -f 4 $(RUST_APP_NAME).apk $(RUST_APP_NAME).final.apk
-	mv -f $(RUST_APP_NAME).final.apk $(RUST_APP_NAME).apk
+	cd apk && zip -D9r ../apk.apk . && zip -D0r ../apk.apk ./resources.arsc ./AndroidManifest.xml
 
-run: $(RUST_APP_NAME).apk
-	$(PREFIX)/android/sdk/platform-tools/adb install -r $(RUST_APP_NAME).apk
+	rm -rf $(RUST_APP_NAME).apk
+	#jarsigner -keystore android/$(RUST_APP_NAME).keystore -storepass $(RUST_APP_NAME) -keypass $(RUST_APP_NAME) \
+	#	-signedjar $(RUST_APP_NAME).apk $(RUST_APP_NAME).apk projectKey
+
+	$(BUILD_TOOLS)/zipalign -v -f 4 apk.apk $(RUST_APP_NAME).apk
+	$(BUILD_TOOLS)/apksigner sign --key-pass pass:$(RUST_APP_NAME) --ks-pass pass:$(RUST_APP_NAME) --ks android/$(RUST_APP_NAME).keystore $(RUST_APP_NAME).apk
+
+	rm -rf temp.apk
+	rm -rf apk.apk
+	rm -rf apk
+
+
+ADB=$(PREFIX)/android/sdk/platform-tools/adb
+
+push: $(RUST_APP_NAME).apk
+	$(ADB) install -r $(RUST_APP_NAME).apk
+
+run: push
+	$(eval ACTIVITYNAME:=$(shell $(BUILD_TOOLS)/aapt dump badging $(RUST_APP_NAME).apk | grep "launchable-activity" | cut -f 2 -d"'"))
+	@echo App name $(ACTIVITYNAME)
+	$(ADB) shell am start -n com.$(RUST_APP_NAME).game/$(ACTIVITYNAME)
 
 doc:
 	cargo doc --target=armv7-linux-androideabi --document-private-items
@@ -113,5 +130,6 @@ doc-open:
 
 clean:
 	cargo clean
+	rm -rf $(RUST_APP_NAME).apk
 
 # end
