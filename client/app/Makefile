@@ -29,6 +29,10 @@ PACKAGE_NAME=com.$(RUST_APP_NAME).game
 
 MODE?=debug
 
+ifeq ($(MODE),release)
+CARGO_FLAGS += --release
+endif
+
 
 FLAGS="-ffunction-sections -funwind-tables -fstack-protector-strong -fPIC -Wall \
 	-Wformat -Werror=format-security -no-canonical-prefixes \
@@ -45,10 +49,10 @@ app: $(RUST_APP_NAME).apk
 
 
 binaries:
-	cargo build --target=aarch64-linux-android --$(MODE)
-	cargo build --target=armv7-linux-androideabi --$(MODE)
-	cargo build --target=i686-linux-android --$(MODE)
-	cargo build	--target=x86_64-linux-android --$(MODE)
+	cargo build --target=aarch64-linux-android   $(CARGO_FLAGS)
+	cargo build --target=armv7-linux-androideabi $(CARGO_FLAGS)
+	cargo build --target=i686-linux-android      $(CARGO_FLAGS)
+	cargo build --target=x86_64-linux-android    $(CARGO_FLAGS)
 
 
 android/$(RUST_APP_NAME).keystore:
