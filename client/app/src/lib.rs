@@ -34,16 +34,16 @@ use ui::colors;
 // Main function
 #[no_mangle]
 extern "C" fn main() {
-    let mut network = network::Network::connect(1., 1., 1, 1).unwrap(); // FIX THIS
     unsafe {
-        //let game_selected: Option<Game> = None;
+        let monitor = GetCurrentMonitor();
+        let screen_width = GetScreenWidth();
+        let screen_height = GetScreenHeight();
+
+        let mut network = network::Network::connect(GetMonitorPhysicalHeight(monitor) as f32, GetMonitorPhysicalWidth(monitor) as f32, screen_height as u32, screen_width as u32).unwrap();
         TraceLog(
             TraceLogLevel_LOG_ERROR.try_into().unwrap(),
             raylib_str!("Hello from phone_tile"),
         );
-
-        let screen_width = GetScreenWidth();
-        let screen_height = GetScreenHeight();
 
         raylib::InitWindow(screen_height, screen_width, raylib_str!("rust app test"));
 
@@ -54,6 +54,8 @@ extern "C" fn main() {
         SetTargetFPS(60);
 
         let mut is_host = false;
+
+        // game selected
 
         while !WindowShouldClose() {
             draw!({
