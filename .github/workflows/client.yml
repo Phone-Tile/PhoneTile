@@ -32,7 +32,7 @@ jobs:
         submodules: true
 
     - name: Init
-      run: yes | make init
+      run: yes 2>/dev/null | make init
       shell: bash
       working-directory: client
 
