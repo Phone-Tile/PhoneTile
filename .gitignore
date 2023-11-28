@@ -23,3 +23,5 @@ Cargo.lock
 # Images
 *.png
 *.gif
+
+*.idsig
