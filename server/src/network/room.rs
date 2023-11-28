@@ -252,11 +252,11 @@ fn test_function(players: &mut Vec<player::Player>) {
         // let mut p1 = &mut players[0];
         // let mut p2 = &mut players[1];
         if players.len() > 1 {
-            if players[0].recv(&mut buffer).unwrap() {
+            if players[0].recv(&mut buffer).unwrap() > 0 {
                 // println!("{buffer:?}");
                 players[1].send(&buffer);
             }
-            if players[1].recv(&mut buffer).unwrap() {
+            if players[1].recv(&mut buffer).unwrap() > 0 {
                 players[0].send(&buffer);
             }
         } else {

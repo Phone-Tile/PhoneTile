@@ -298,7 +298,7 @@ pub fn main_game(network: &mut network::Network) {
             }
             network.send(&data);
 
-            if network.recv(&mut data) {
+            if network.recv(&mut data) > 0 {
                 let mut track_seg = [0_u8; 1];
                 for i in 0..1 {
                     track_seg[i] = data[i];
