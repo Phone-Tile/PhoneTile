@@ -49,13 +49,13 @@ impl Player {
     /// Receive data from the associated client
     /// Return how much data was actually received
     /// If no data was received, the function return 0
-    pub fn recv(&mut self, buffer: &mut [u8; packet::MAX_DATA_SIZE]) -> Result<bool, Error> {
+    pub fn recv(&mut self, buffer: &mut [u8; packet::MAX_DATA_SIZE]) -> Result<usize, Error> {
         match self.receiver.try_recv() {
             Ok(m) => {
                 buffer.copy_from_slice(&m.data.unwrap());
-                Ok(true)
+                Ok(m.size)
             }
-            Err(TryRecvError::Empty) => Ok(false),
+            Err(TryRecvError::Empty) => Ok(0),
             Err(TryRecvError::Disconnected) => {
                 Err(Error::new(ErrorKind::NotConnected, "client not connected"))
             }
