@@ -30,6 +30,7 @@ use ui::button::{
     Button, Draw, Style
 };
 use ui::colors;
+use ui::text::waiting_text;
 
 // Main function
 #[no_mangle]
@@ -47,6 +48,9 @@ extern "C" fn main() {
 
         raylib::InitWindow(screen_height, screen_width, raylib_str!("rust app test"));
 
+        let screen_width = GetScreenWidth();
+        let screen_height = GetScreenHeight();
+
         raylib::ChangeDirectory(raylib_str!("assets"));
 
         let mut room = 0;
@@ -62,11 +66,18 @@ extern "C" fn main() {
                 match network.get_status() {
                     network::Status::Connected => {
                         DrawText(
-                            raylib_str!("Phone Tile"),
-                            0,
+                            raylib_str!("Phone"),
+                            ((screen_width as f32)*(1./9.)) as c_int,
                             ((screen_height as f32)*(1./11.)) as c_int,
-                            ((screen_height as f32)*(3./11.)) as c_int,
-                            colors::WHITE,
+                            ((screen_height as f32)*(1.4/11.)) as c_int,
+                            colors::BLUE,
+                        );
+                        DrawText(
+                            raylib_str!("Tile"),
+                            ((screen_width as f32)*(2./9.)) as c_int,
+                            ((screen_height as f32)*(2.6/11.)) as c_int,
+                            ((screen_height as f32)*(1.4/11.)) as c_int,
+                            colors::PURPLE,
                         );
 
                         button::create_room(screen_height, screen_width).draw();
@@ -100,11 +111,18 @@ extern "C" fn main() {
                     network::Status::InRoom => {
                         if is_host {
                             DrawText(
-                                raylib_str!(format!("{}", room)),
-                                0,
+                                raylib_str!(format!("Room ID :")),
+                                ((screen_width as f32)*(1.5/9.)) as c_int,
                                 ((screen_height as f32)*(1./13.)) as c_int,
-                                ((screen_height as f32)*(2./13.)) as c_int,
-                                colors::WHITE,
+                                ((screen_height as f32)*(1./13.)) as c_int,
+                                colors::YELLOW
+                            );
+                            DrawText(
+                                raylib_str!(format!("{}", room)),
+                                ((screen_width as f32)*(2./5.)) as c_int,
+                                ((screen_height as f32)*(2.1/13.)) as c_int,
+                                ((screen_height as f32)*(1.9/13.)) as c_int,
+                                colors::YELLOW
                             );
                             button::racer(screen_height, screen_width).draw();
                             button::snake(screen_height, screen_width).draw();
@@ -122,13 +140,7 @@ extern "C" fn main() {
                                 network.lock_room(network::Game::Unknown).unwrap();
                             }
                         } else {
-                            DrawText(
-                                raylib_str!("Waiting ..."),
-                                100,
-                                200,
-                                100,
-                                colors::WHITE,
-                            )    
+                            waiting_text(screen_height, screen_width) 
                         }
                     }
                     // network::Status::SelectedGame => {
@@ -143,10 +155,24 @@ extern "C" fn main() {
                     // }
                     network::Status::InLockRoom(n) => {
                         DrawText(
+                            raylib_str!(format!("Take your")),
+                            ((screen_width as f32)*(1./9.)) as c_int,
+                            ((screen_height as f32)*(1./13.)) as c_int,
+                            ((screen_height as f32)*(1./13.)) as c_int,
+                            colors::RED
+                        );
+                        DrawText(
+                            raylib_str!(format!("positions !")),
+                            ((screen_width as f32)*(1./9.)) as c_int,
+                            ((screen_height as f32)*(2./13.)) as c_int,
+                            ((screen_height as f32)*(1./13.)) as c_int,
+                            colors::RED
+                        );
+                        DrawText(
                             raylib_str!(format!("{n}")),
-                            0,
-                            ((screen_height as f32)*(1./9.)) as c_int,
-                            ((screen_height as f32)*(3./9.)) as c_int,
+                            ((screen_width as f32)*(2./5.)) as c_int,
+                            ((screen_height as f32)*(4./13.)) as c_int,
+                            ((screen_height as f32)*(2./13.)) as c_int,
                             colors::PURPLE
                         );
                         if is_host {
