@@ -243,10 +243,10 @@ impl Track {
 }
 
 fn send_data(network: &mut network::Network) {
-    let buffer = vec![IsMouseButtonDown(
+    let buffer = [IsMouseButtonDown(
         MouseButton_MOUSE_BUTTON_LEFT.try_into().unwrap(),
     )];
-    network.send(&buffer)
+    network.send(&buffer);
 }
 
 fn recv_data(
@@ -254,27 +254,24 @@ fn recv_data(
     buffer_cars: Vec<(f64, f64)>,
     buffer_bezier: Vec<(f64, f64)>,
 ) {
-    let mut update_data = vec![0_u8; packet::MAX_DATA_SIZE];
+    let mut update_data = [0_u8; packet::MAX_DATA_SIZE];
     let mut new_data = update_data.clone();
     let mut flushing = network.recv(update_data);
     let mut N = 0;
-    loop {
-        if let Ok(n) = flushing && n>0 {
-            new_data = update_data.clone();
-            N = n;
-        } else {
-            break
-        }
+    while flushing > 0 {
+        new_data = update_data.clone();
+        N = n;
+        flushing = network.recv(update_data);
     }
     if N > 0 {
-        while buffer_cars.len() < new_data[0] {
+        while buffer_cars.len() < new_data[0].into() {
             buffer_cars.push((0., 0.))
         }
-        while buffer_bezier.len() < N - new_data[0] {
+        while buffer_bezier.len() < (N - new_data[0]).into() {
             buffer_cars.push((0., 0.))
         }
-        let cars = new_data[1..new_data[0]];
-        let bezier = new_data[new_data[0]..N];
+        let cars = new_data[1..new_data[0].into()];
+        let bezier = new_data[new_data[0].into()..N];
         for car_idx in 0..(cars.len() / 16) {
             let x = f64::from_be_bytes(cars[(16 * car_idx)..(16 * car_idx + 8)]);
             let y = f64::from_be_bytes(cars[(16 * car_idx + 8)..(16 * car_idx + 16)]);
@@ -299,8 +296,8 @@ fn recv_data(
 
 unsafe fn draw_cars(car: (f64, f64)) {
     DrawCircle(
-        car.0,
-        car.1,
+        car.0 as i32,
+        car.1 as i32,
         20.0,
         Color {
             r: 255,
@@ -312,14 +309,14 @@ unsafe fn draw_cars(car: (f64, f64)) {
 }
 
 unsafe fn draw_bez(buffer: &Vec<f32>) {
-    for i in 1..(buffer.len() / 4) {
+    for i in 1..(buffer.len() / 8) {
         DrawSplineSegmentBezierCubic(
-            buffer[4 * i],
-            buffer[4 * i + 1],
-            buffer[4 * i + 2],
-            buffer[4 * i + 3],
+            Vector2(buffer[8 * i], buffer[8 * i + 1]),
+            Vector2(buffer[8 * i + 2], buffer[8 * i + 3]),
+            Vector2(buffer[8 * i + 4], buffer[8 * i + 5]),
+            Vector2(buffer[8 * i + 6], buffer[8 * i + 7]),
             4.,
-            Color::WHITE,
+            crate::ui::color::Color::WHITE,
         )
     }
 }
@@ -337,8 +334,8 @@ pub fn main_game(network: &mut network::Network) {
                 b: 0,
                 a: 255,
             });
-            buffer_cars.iter().map(|car| draw_cars(car));
-            buffer_cars.iter().map(|car| draw_cars(car));
+            buffer_cars.iter().map(|car| draw_cars(*car));
+            draw_bez(&buffer_bezier);
         });
     }
 
