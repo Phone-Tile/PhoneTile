@@ -157,17 +157,18 @@ extern "C" fn main() {
                             colors::PURPLE,
                         );
 
-                        button::create_room(screen_height, screen_width).draw();
-                        button::join_room(screen_height, screen_width).draw();
+                        let create_room = button::create_room(screen_height, screen_width);
+                        let join_room = button::join_room(screen_height, screen_width);
 
-                        if button::create_room(screen_height, screen_width).click() {
+                        create_room.draw();
+                        join_room.draw();
+
+                        if create_room.click() {
                             is_host = true;
                             room = network.create_room().unwrap();
                         };
-                        if button::join_room(screen_height, screen_width).click() {
-                            // TODO : TYPE ID;
+                        if join_room.click() {
                             want_join = true;
-
                         }
                         }
                     }
@@ -196,19 +197,25 @@ extern "C" fn main() {
                                 ((screen_height as f32)*(1.9/13.)) as c_int,
                                 colors::YELLOW
                             );
-                            button::racer(screen_height, screen_width).draw();
-                            button::snake(screen_height, screen_width).draw();
-                            button::golf(screen_height, screen_width).draw();
+
+                            let racer = button::racer(screen_height, screen_width);
+                            let snake = button::snake(screen_height, screen_width);
+                            let golf = button::golf(screen_height, screen_width);
+
+                            racer.draw();
+                            snake.draw();
+                            golf.draw();
+
                             /*if button::GAME().colision() {
                                 button::GAME().change_foreground_color(colors::BLUE);
                             };*/
-                            if button::racer(screen_height, screen_width).click() {
+                            if racer.click() {
                                 network.lock_room(network::Game::Racer).unwrap();
                             }
-                            if button::snake(screen_height, screen_width).click() {
+                            if snake.click() {
                                 network.lock_room(network::Game::Test).unwrap();
                             }
-                            if button::golf(screen_height, screen_width).click() {
+                            if golf.click() {
                                 network.lock_room(network::Game::Unknown).unwrap();
                             }
                         } else {
@@ -248,11 +255,12 @@ extern "C" fn main() {
                             colors::PURPLE
                         );
                         if is_host {
-                            button::start_game(screen_height, screen_width).draw();
+                            let start_game = button::start_game(screen_height, screen_width);
+                            start_game.draw();
                             /*if button::start_game().colision() {
                                 button::start_game().change_foreground_color(colors::BLUE);
                             };*/
-                            if button::start_game(screen_height, screen_width).click() {
+                            if start_game.click() {
                                 network.launch_game().unwrap();
                             }
                         }
