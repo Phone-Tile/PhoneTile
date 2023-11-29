@@ -34,7 +34,6 @@ use ui::colors;
 // Main function
 #[no_mangle]
 extern "C" fn main() {
-    let mut network = network::Network::connect(1., 1., 1, 1).unwrap();
     unsafe {
         //let game_selected: Option<Game> = None;
         TraceLog(
@@ -46,6 +45,9 @@ extern "C" fn main() {
         let screen_height = 0;
 
         raylib::InitWindow(screen_width, screen_height, raylib_str!("rust app test"));
+
+        let monitor = GetCurrentMonitor();
+        let mut network = network::Network::connect(1547 as f32, 757 as f32, GetScreenHeight() as u32, GetScreenWidth() as u32).unwrap();
 
         raylib::ChangeDirectory(raylib_str!("assets"));
 
@@ -110,7 +112,7 @@ extern "C" fn main() {
                             button::LOCK_GAME_BUTTON.change_foreground_color(colors::BLUE);
                         };
                         if button::LOCK_GAME_BUTTON.click() {
-                            network.lock_room(network::Game::Test).unwrap();
+                            network.lock_room(network::Game::Racer).unwrap();
                         }
 
                         DrawText(

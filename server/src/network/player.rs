@@ -63,15 +63,15 @@ impl Player {
     }
 
     /// Convert physical coordinates to screen coordinates
-    pub fn to_local_coordinates(&self, x: f32, y: f32) -> (u32, u32) {
+    pub fn to_local_coordinates(&self, x: f64, y: f64) -> (f64, f64) {
         let mut res_x = x;
         let mut res_y = y;
-        res_x -= self.top_left_x;
-        res_y -= self.top_left_y;
-        res_x *= self.window_width as f32 / self.physical_width;
-        res_y *= self.window_height as f32 / self.physical_height;
+        res_x -= self.top_left_x as f64;
+        res_y -= self.top_left_y as f64;
+        res_x *= self.window_width as f64 / self.physical_width as f64;
+        res_y *= self.window_height as f64 / self.physical_height as f64;
 
-        (res_x.floor() as u32, res_y.floor() as u32)
+        (res_x, res_y)
     }
 
     /// Convert screen coordinates to physical coordinates, not usefull yet so big ratio

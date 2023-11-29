@@ -2,6 +2,7 @@ use crate::network;
 use std::convert::TryInto;
 use std::ffi::{c_float, c_int};
 use crate::network::packet;
+use std::ffi::CString;
 
 use c_char;
 
@@ -271,8 +272,8 @@ fn recv_data(
         while buffer_bezier.len() < ((N - new_data[0] as usize) / 16) {
             buffer_bezier.push((0., 0.))
         }
-        let cars = &new_data[1..new_data[0].into()];
-        let bezier = &new_data[new_data[0].into()..N];
+        let cars = &new_data[1..(new_data[0]+1).into()];
+        let bezier = &new_data[(new_data[0]+1).into()..N];
         for car_idx in 0..(cars.len() / 16) {
             let mut temp_cars = [0_u8; 8];
             temp_cars.copy_from_slice(&cars[(16 * car_idx)..(16 * car_idx + 8)]);
@@ -311,7 +312,7 @@ unsafe fn draw_cars(car: (f64, f64)) {
     DrawCircle(
         car.0 as i32,
         car.1 as i32,
-        20.0,
+        200.0,
         Color {
             r: 255,
             g: 0,
@@ -329,7 +330,7 @@ unsafe fn draw_bez(buffer: &Vec<(f64,f64)>) {
             Vector2{ x: buffer[4 * i + 1].0 as f32 * width as f32, y: buffer[4 * i + 1].1 as f32 * height as f32},
             Vector2{ x: buffer[4 * i + 2].0 as f32 * width as f32, y: buffer[4 * i + 2].1 as f32 * height as f32},
             Vector2{ x: buffer[4 * i + 3].0 as f32 * width as f32, y: buffer[4 * i + 3].1 as f32 * height as f32},
-            4.,
+            200.,
             crate::ui::colors::WHITE,
         )
     }
@@ -339,8 +340,8 @@ pub unsafe fn main_game(network: &mut network::Network) {
     let (width, height) = (GetScreenWidth(), GetScreenHeight());
     let mut buffer_cars = Vec::new();
     let mut buffer_bezier = Vec::new();
-    recv_data(network, &mut buffer_cars, &mut buffer_bezier);
     while !WindowShouldClose() {
+        recv_data(network, &mut buffer_cars, &mut buffer_bezier);
         draw!({
             ClearBackground(Color {
                 r: 0,
@@ -348,9 +349,13 @@ pub unsafe fn main_game(network: &mut network::Network) {
                 b: 0,
                 a: 255,
             });
-            buffer_cars.iter().map(|car| draw_cars(*car));
+            buffer_cars.iter().for_each(|car| draw_cars(*car));
             draw_bez(&buffer_bezier);
         });
-        send_data(&mut network);
+        send_data(network);
+        raylib::TraceLog(
+            raylib::TraceLogLevel_LOG_ERROR.try_into().unwrap(),
+            raylib::raylib_str!(format!("Cars : {:?}\n Bezier : {:?}", buffer_cars, buffer_bezier)),
+        );
     }
 }

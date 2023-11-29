@@ -5,40 +5,41 @@ mod vehicle;
 
 use crate::network::packet;
 use crate::network::player;
+use std::{time, thread};
 
-fn encode_data(game: &game::Game) -> Vec<u8> {
+fn encode_data(game: &game::Game, player: &player::Player) -> Vec<u8> {
     let mut raw_data: Vec<u8> = Vec::new();
     let map = game.get_map();
     let cars = game.get_cars();
     raw_data.push(8 * 2 * (cars.len() as u8));
     for car in cars.iter() {
-        let (x, y) = car;
-        let xb = f64::to_be_bytes(*x);
-        let yb = f64::to_be_bytes(*y);
+        let (x, y) = player.to_local_coordinates(car.0, car.1);
+        let xb = f64::to_be_bytes(x);
+        let yb = f64::to_be_bytes(y);
         raw_data.extend(xb);
         raw_data.extend(yb);
     }
     for bezier in map.iter() {
         let p = bezier.get_points();
-        let (x, y) = p.0.into_tuple();
+        let (x, y) = player.to_local_coordinates(p.0.into_tuple().0, p.0.into_tuple().1);
         let xb = f64::to_be_bytes(x);
         let yb = f64::to_be_bytes(y);
         raw_data.extend(xb);
         raw_data.extend(yb);
 
-        let (x, y) = p.1.into_tuple();
+        let (x, y) = player.to_local_coordinates(p.1.into_tuple().0, p.1.into_tuple().1);
         let xb = f64::to_be_bytes(x);
         let yb = f64::to_be_bytes(y);
         raw_data.extend(xb);
         raw_data.extend(yb);
 
-        let (x, y) = p.2.into_tuple();
+        let (x, y) = player.to_local_coordinates(p.2.into_tuple().0, p.2.into_tuple().1);
         let xb = f64::to_be_bytes(x);
         let yb = f64::to_be_bytes(y);
         raw_data.extend(xb);
         raw_data.extend(yb);
 
-        let (x, y) = p.3.into_tuple();
+        let (x, y) = player.to_local_coordinates(p.3.into_tuple().0, p.3.into_tuple().1);
         let xb = f64::to_be_bytes(x);
         let yb = f64::to_be_bytes(y);
         raw_data.extend(xb);
@@ -47,9 +48,10 @@ fn encode_data(game: &game::Game) -> Vec<u8> {
     raw_data
 }
 
-fn send_data(players: &mut [player::Player], raw_data: &[u8]) {
+fn send_data(players: &mut [player::Player], game: &game::Game) {
     for player in players.iter_mut() {
-        player.send(raw_data).err();
+        let raw_data = encode_data(&game, &player);
+        player.send(raw_data.as_slice()).err();
     }
 }
 fn recv_data(players: &mut [player::Player]) -> Vec<bool> {
@@ -86,12 +88,13 @@ pub fn racer(players: &mut [player::Player]) -> Result<(), std::io::Error> {
         },
     };
     loop {
-        let raw_data = encode_data(&game);
-        send_data(players, &raw_data);
+        // let raw_data = encode_data(&game);
+        send_data(players, &game);
         let phone_accel = recv_data(players);
         for (i_p, _) in players.iter().enumerate() {
             game.update_position(i_p, phone_accel[i_p]);
         }
+        thread::sleep(time::Duration::from_millis(10));
     }
     Ok(())
 
