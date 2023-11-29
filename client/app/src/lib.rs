@@ -1,5 +1,7 @@
 use std::convert::TryInto;
 use std::ffi::{c_char, c_float, c_int};
+use std::net::{SocketAddr, IpAddr, Ipv4Addr};
+use std::str::FromStr;
 use std::time;
 
 extern crate raylib;
@@ -25,7 +27,8 @@ pub extern "C" fn ANativeActivity_onCreate(
 mod game;
 mod network;
 mod ui;
-use ui::button;
+use ui::keyboard::Keyboard;
+use ui::{button, keyboard};
 use ui::button::{
     Button, Draw, Style
 };
@@ -40,23 +43,68 @@ extern "C" fn main() {
         let screen_width = GetScreenWidth();
         let screen_height = GetScreenHeight();
 
-        let mut network = network::Network::connect(GetMonitorPhysicalHeight(monitor) as f32, GetMonitorPhysicalWidth(monitor) as f32, screen_height as u32, screen_width as u32).unwrap();
+
         TraceLog(
             TraceLogLevel_LOG_ERROR.try_into().unwrap(),
             raylib_str!("Hello from phone_tile"),
         );
-
         raylib::InitWindow(screen_height, screen_width, raylib_str!("rust app test"));
 
         let screen_width = GetScreenWidth();
         let screen_height = GetScreenHeight();
 
-        raylib::ChangeDirectory(raylib_str!("assets"));
+        let mut keyboard = Keyboard::new(screen_width as f32, screen_height as f32);
 
-        let mut room = 0;
+        raylib::ChangeDirectory(raylib_str!("assets"));
 
         SetTargetFPS(60);
 
+
+
+        TraceLog(
+            TraceLogLevel_LOG_ERROR.try_into().unwrap(),
+            raylib_str!("Holla from phone_tile : Try to connect"),
+        );
+
+        let mut socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(193, 168, 1, 1)),8888);
+
+        let mut network =network::Network::connect(&socket,GetMonitorPhysicalHeight(monitor) as f32, GetMonitorPhysicalWidth(monitor) as f32, screen_height as u32, screen_width as u32);
+        TraceLog(
+            TraceLogLevel_LOG_ERROR.try_into().unwrap(),
+            raylib_str!("Holla from phone_tile : Try end to connect"),
+        );
+
+        while let Err(_) = network {
+            keyboard.reset_value();
+            let mut val = keyboard.get_value();
+            'window: while !WindowShouldClose() {
+                draw!({
+                    ClearBackground(colors::BLACK);
+                        DrawText(
+                            raylib_str!(format!("Addr : {val}")),
+                            ((screen_width as f32)*(1./9.)) as c_int,
+                            ((screen_height as f32)*(1./11.)) as c_int,
+                            50,
+                            colors::BLUE,
+                        );
+                    keyboard.draw();
+                    keyboard.update();
+                });
+                val = keyboard.get_value();
+                if val.matches(".").count() > 3 {
+                    break 'window;
+                }
+            }
+            val.pop();
+            socket.set_ip(IpAddr::from_str(format!("{val}").as_str()).unwrap());
+            network = network::Network::connect(&socket,GetMonitorPhysicalHeight(monitor) as f32, GetMonitorPhysicalWidth(monitor) as f32, screen_height as u32, screen_width as u32);
+        }
+
+        let mut network = network.unwrap();
+
+
+
+        let mut room = 0;
         let mut is_host = false;
 
         while !WindowShouldClose() {
