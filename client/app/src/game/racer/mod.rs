@@ -1,6 +1,7 @@
 use crate::network;
 use std::convert::TryInto;
 use std::ffi::{c_float, c_int};
+use crate::network::packet;
 
 use c_char;
 
@@ -260,14 +261,14 @@ fn recv_data(
     let mut N = 0;
     while flushing > 0 {
         new_data = update_data.clone();
-        N = n;
+        N = flushing;
         flushing = network.recv(update_data);
     }
     if N > 0 {
-        while buffer_cars.len() < new_data[0].into() {
+        while buffer_cars.len() < (new_data[0]/2).into() {
             buffer_cars.push((0., 0.))
         }
-        while buffer_bezier.len() < (N - new_data[0]).into() {
+        while buffer_bezier.len() < ((N - new_data[0]) / 2).into() {
             buffer_cars.push((0., 0.))
         }
         let cars = new_data[1..new_data[0].into()];
@@ -278,14 +279,14 @@ fn recv_data(
             buffer_cars[car_idx] = (x, y);
         }
         for bezier_idx in 0..(bezier.len() / 64) {
-            let p1x = f64::from_be_bytes(cars[(64 * car_idx)..(64 * car_idx + 8)]);
-            let p1y = f64::from_be_bytes(cars[(64 * car_idx + 8)..(64 * car_idx + 16)]);
-            let p2x = f64::from_be_bytes(cars[(64 * car_idx + 16)..(64 * car_idx + 24)]);
-            let p2y = f64::from_be_bytes(cars[(64 * car_idx + 24)..(64 * car_idx + 32)]);
-            let p3x = f64::from_be_bytes(cars[(64 * car_idx + 32)..(64 * car_idx + 40)]);
-            let p3y = f64::from_be_bytes(cars[(64 * car_idx + 40)..(64 * car_idx + 48)]);
-            let p4x = f64::from_be_bytes(cars[(64 * car_idx + 48)..(64 * car_idx + 56)]);
-            let p4y = f64::from_be_bytes(cars[(64 * car_idx + 56)..(64 * car_idx + 64)]);
+            let p1x = f64::from_be_bytes(cars[(64 * bezier_idx)..(64 * bezier_idx+ 8)]);
+            let p1y = f64::from_be_bytes(cars[(64 * bezier_idx + 8)..(64 * bezier_idx+ 16)]);
+            let p2x = f64::from_be_bytes(cars[(64 * bezier_idx + 16)..(64 * bezier_idx + 24)]);
+            let p2y = f64::from_be_bytes(cars[(64 * bezier_idx + 24)..(64 * bezier_idx + 32)]);
+            let p3x = f64::from_be_bytes(cars[(64 * bezier_idx + 32)..(64 * bezier_idx + 40)]);
+            let p3y = f64::from_be_bytes(cars[(64 * bezier_idx + 40)..(64 * bezier_idx + 48)]);
+            let p4x = f64::from_be_bytes(cars[(64 * bezier_idx + 48)..(64 * bezier_idx + 56)]);
+            let p4y = f64::from_be_bytes(cars[(64 * bezier_idx + 56)..(64 * bezier_idx + 64)]);
             buffer_bezier[bezier_idx] = (p1x, p1y);
             buffer_bezier[bezier_idx + 1] = (p2x, p2y);
             buffer_bezier[bezier_idx + 2] = (p3x, p3y);
@@ -316,7 +317,7 @@ unsafe fn draw_bez(buffer: &Vec<(f64,f64)>) {
             Vector2{ x: buffer[4 * i + 2].0 as f32, y: buffer[4 * i + 2].1 as f32},
             Vector2{ x: buffer[4 * i + 3].0 as f32, y: buffer[4 * i + 3].1 as f32},
             4.,
-            crate::ui::color::Color::WHITE,
+            crate::ui::colors::Color::WHITE,
         )
     }
 }
