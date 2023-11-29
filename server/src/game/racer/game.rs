@@ -10,7 +10,7 @@ const ACC_RATE: f64 = 1.;
 const DECC_RATE: f64 = -1.2;
 const SPEED_EXCESS: f64 = 0.3;
 const FRICTION: f64 = 0.1;
-const DT: f64 = 1. / 60. * 0.01; 
+const DT: f64 = 1. / 60. * 1.;
 
 /// The game structure. `Game.map` is the continuous sequence of bezier curves forming the curcuit and `Game.cars` is the list of cars present on the circuit.
 pub struct Game {
@@ -171,31 +171,58 @@ impl Game {
 
     pub fn update_position(&mut self, car_idx: usize, accelerate: bool) {
         // Random bullshit, GO! v(t+dt) = (a-f*v(t))*dt
-        self.cars[car_idx].speed += ((if accelerate { ACC_RATE } else { DECC_RATE })
-            - FRICTION * self.cars[car_idx].speed * self.cars[car_idx].speed)
-            * DT;
+        // self.cars[car_idx].speed = (((if accelerate { ACC_RATE } else { DECC_RATE })
+        //    - FRICTION * self.cars[car_idx].speed /* self.cars[car_idx].speed*/)
+        //    * DT).abs();
+
+        //self.cars[car_idx].speed += ((if accelerate { ACC_RATE }  else { 0. })  * DT);
+
+        self.cars[car_idx].speed = 0.01;
 
         let grad = self.map[self.cars[car_idx].curve_index].compute_grad(self.cars[car_idx].t);
         // The distance traveled will be total_distance/||grad|| in order to keep a constant speed accross the curve
-        let mut new_t = self.cars[car_idx].speed / grad.l2_norm() + self.cars[car_idx].t;
+        let mut new_t = self.cars[car_idx].speed /*/ grad.l2_norm()*/+ self.cars[car_idx].t;
         let new_curve =
-            (self.cars[car_idx].curve_index + ((new_t > 1.) as usize)).rem_euclid(self.map.len());
+            (self.cars[car_idx].curve_index + ((new_t > 1.) as usize)) % self.map.len();
+
+        if new_t > 1. {
+            new_t -= 1.;
+        }
+
+        // let norm = grad.l2_norm();
+
+        // grad.0 *= self.cars[car_idx].speed / grad.l2_norm();
+        // grad.1 *= self.cars[car_idx].speed / grad.l2_norm();
+
+        // if grad.scalar(self.map[new_curve]
+        //     .compute_grad(new_t).normal()).abs() > SPEED_EXCESS {
+        //         self.leave_road(car_idx, grad)
+        //     } else {
+        //         if new_t > 1. {
+        //             self.cars[car_idx].curve_index = new_curve;
+        //         }
+        //         self.cars[car_idx].t = new_t;
+        //     }
+
+        self.cars[car_idx].curve_index = new_curve;
+        self.cars[car_idx].t = new_t;
+
+        println!("{} {} {}", new_curve, new_t, self.map.len());
 
         // If the speed is too high for the curve, leave the road. Else, keep going.
-        if self.map[new_curve]
-            .compute_grad(new_t)
-            .scalar(grad.normal())
-            .abs()
-            > SPEED_EXCESS
-        {
-            self.leave_road(car_idx, grad)
-        } else {
-            if new_t > 1. {
-                self.cars[car_idx].curve_index = new_curve;
-                new_t -= 1.;
-            }
-            self.cars[car_idx].t = new_t;
-        }
+        // if self.map[new_curve]
+        //     .compute_grad(new_t)
+        //     .scalar(grad.normal())
+        //     .abs()
+        //     > SPEED_EXCESS
+        // {
+        //     self.leave_road(car_idx, grad)
+        // } else {
+        //     if new_t > 1. {
+        //         self.cars[car_idx].curve_index = new_curve;
+        //     }
+        //     self.cars[car_idx].t = new_t;
+        // }
     }
 
     fn get_pos(&mut self, car_idx: usize) -> Point {

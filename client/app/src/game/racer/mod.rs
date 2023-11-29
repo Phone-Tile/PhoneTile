@@ -300,10 +300,10 @@ fn recv_data(
             let p4x = f64::from_be_bytes(temp_cars);
             temp_cars.copy_from_slice(&bezier[(64 * bezier_idx + 56)..(64 * bezier_idx + 64)]);
             let p4y = f64::from_be_bytes(temp_cars);
-            buffer_bezier[bezier_idx] = (p1x, p1y);
-            buffer_bezier[bezier_idx + 1] = (p2x, p2y);
-            buffer_bezier[bezier_idx + 2] = (p3x, p3y);
-            buffer_bezier[bezier_idx + 3] = (p4x, p4y);
+            buffer_bezier[bezier_idx*4] = (p1x, p1y);
+            buffer_bezier[bezier_idx*4 + 1] = (p2x, p2y);
+            buffer_bezier[bezier_idx*4 + 2] = (p3x, p3y);
+            buffer_bezier[bezier_idx*4 + 3] = (p4x, p4y);
         }
     }
 }
@@ -312,7 +312,7 @@ unsafe fn draw_cars(car: (f64, f64)) {
     DrawCircle(
         car.0 as i32,
         car.1 as i32,
-        200.0,
+        40.0,
         Color {
             r: 255,
             g: 0,
@@ -326,11 +326,11 @@ unsafe fn draw_bez(buffer: &Vec<(f64,f64)>) {
     let (width, height) = (GetScreenWidth(), GetScreenHeight());
     for i in 0..(buffer.len() / 4) {
         DrawSplineSegmentBezierCubic(
-            Vector2{ x: buffer[4 * i].0 as f32 * width as f32   , y: buffer[4 * i].1 as f32 * height as f32},
-            Vector2{ x: buffer[4 * i + 1].0 as f32 * width as f32, y: buffer[4 * i + 1].1 as f32 * height as f32},
-            Vector2{ x: buffer[4 * i + 2].0 as f32 * width as f32, y: buffer[4 * i + 2].1 as f32 * height as f32},
-            Vector2{ x: buffer[4 * i + 3].0 as f32 * width as f32, y: buffer[4 * i + 3].1 as f32 * height as f32},
-            200.,
+            Vector2{ x: buffer[4 * i].0 as f32, y: buffer[4 * i].1 as f32},
+            Vector2{ x: buffer[4 * i + 1].0 as f32, y: buffer[4 * i + 1].1 as f32},
+            Vector2{ x: buffer[4 * i + 2].0 as f32, y: buffer[4 * i + 2].1 as f32},
+            Vector2{ x: buffer[4 * i + 3].0 as f32, y: buffer[4 * i + 3].1 as f32},
+            10.,
             crate::ui::colors::WHITE,
         )
     }
