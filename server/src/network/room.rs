@@ -124,7 +124,7 @@ impl Room {
         self.set_player_phone_location();
     }
 
-    fn unlock_game(&mut self) {
+    fn unlock_game(&mut self) -> Result<(), Error> {
         let mut index = 0;
         while index < self.players.len() {
             match self.players[index]
@@ -143,9 +143,9 @@ impl Room {
 
         // Here we will put the interface code with the client
         match self.game_id {
-            client::Game::Racer => crate::game::racer::racer(&self.players),
+            client::Game::Racer => crate::game::racer::racer(&mut self.players),
             client::Game::Test => test_function(&mut self.players),
-            client::Game::Unknown => {}
+            client::Game::Unknown => Ok(()),
         }
     }
 
@@ -161,7 +161,6 @@ impl Room {
                 ));
             }
         }
-        Ok(())
     }
 
     fn add_player(&mut self, message: pipe::ServerMessage) {
@@ -246,7 +245,7 @@ impl Room {
 ///
 //////////////////////////////////////////////
 
-fn test_function(players: &mut Vec<player::Player>) {
+fn test_function(players: &mut Vec<player::Player>) -> Result<(), Error> {
     let mut buffer = [0_u8; packet::MAX_DATA_SIZE];
     loop {
         // let mut p1 = &mut players[0];
@@ -264,4 +263,5 @@ fn test_function(players: &mut Vec<player::Player>) {
         }
         thread::sleep(time::Duration::from_millis(10));
     }
+    Ok(())
 }

@@ -1,6 +1,9 @@
-use crate::game::bezier::*;
-use crate::game::vehicle::*;
+use super::bezier::*;
+use super::vehicle::*;
+
+#[cfg(debug_assertions)]
 use plotters::prelude::*;
+#[cfg(debug_assertions)]
 use tqdm::tqdm;
 
 const ACC_RATE: f64 = 1.;
@@ -21,7 +24,7 @@ impl Game {
         mut map: Vec<Bezier>,
         n_cars: usize,
         dimensions: &Vec<(f64, f64)>,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
+    ) -> Result<Self, std::io::Error> {
         let mut cars = Vec::new();
         for i in 0..n_cars {
             cars.push(Vehicle::new(0, i));
@@ -38,7 +41,7 @@ impl Game {
     }
 
     /// Generate the points at a third of the minimal height of two consecutive phones to build the Bezier curves. The circuit is build anticlockwise.
-    fn get_io_map(dimensions: &Vec<(f64, f64)>) -> Result<Data, Box<dyn std::error::Error>> {
+    fn get_io_map(dimensions: &Vec<(f64, f64)>) -> Result<Data, std::io::Error> {
         if dimensions.len() < 2 {
             panic!("There must be at least two phones.")
         }
@@ -149,9 +152,14 @@ impl Game {
         Ok(io_points)
     }
 
-    #[allow(unused)]
-    fn get_map(&self) -> Vec<Bezier> {
-        self.map.clone()
+    pub fn get_map(&self) -> &Vec<Bezier> {
+        &self.map
+    }
+    pub fn get_cars(&self) -> Vec<(f64, f64)> {
+        self.cars
+            .iter()
+            .map(|c| self.map[c.curve_index].compute_curve(c.t).into_tuple())
+            .collect()
     }
 
     fn leave_road(&mut self, car_idx: usize, direction: Point) {
@@ -161,7 +169,7 @@ impl Game {
         self.cars[car_idx].is_leaving = Some(pos + normalized_point);
     }
 
-    fn update_position(&mut self, car_idx: usize, accelerate: bool) {
+    pub fn update_position(&mut self, car_idx: usize, accelerate: bool) {
         // Random bullshit, GO! v(t+dt) = (a-f*v(t))*dt
         self.cars[car_idx].speed += ((if accelerate { ACC_RATE } else { DECC_RATE })
             - FRICTION * self.cars[car_idx].speed)
@@ -201,6 +209,7 @@ impl Game {
     }
 }
 
+#[cfg(debug_assertions)]
 impl Game {
     #[allow(unused)]
     pub fn animate(&mut self, name: &str, iter: usize) -> Result<(), Box<dyn std::error::Error>> {

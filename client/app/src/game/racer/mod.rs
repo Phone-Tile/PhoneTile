@@ -242,8 +242,107 @@ impl Track {
     }
 }
 
+fn send_data(network: &mut network::Network) {
+    let buffer = vec![IsMouseButtonDown(
+        MouseButton_MOUSE_BUTTON_LEFT.try_into().unwrap(),
+    )];
+    network.send(&buffer)
+}
+
+fn recv_data(
+    network: &mut network::Network,
+    buffer_cars: Vec<(f64, f64)>,
+    buffer_bezier: Vec<(f64, f64)>,
+) {
+    let mut update_data = vec![0_u8; packet::MAX_DATA_SIZE];
+    let mut new_data = update_data.clone();
+    let mut flushing = network.recv(update_data);
+    let mut N = 0;
+    loop {
+        if let Ok(n) = flushing && n>0 {
+            new_data = update_data.clone();
+            N = n;
+        } else {
+            break
+        }
+    }
+    if N > 0 {
+        while buffer_cars.len() < new_data[0] {
+            buffer_cars.push((0., 0.))
+        }
+        while buffer_bezier.len() < N - new_data[0] {
+            buffer_cars.push((0., 0.))
+        }
+        let cars = new_data[1..new_data[0]];
+        let bezier = new_data[new_data[0]..N];
+        for car_idx in 0..(cars.len() / 16) {
+            let x = f64::from_be_bytes(cars[(16 * car_idx)..(16 * car_idx + 8)]);
+            let y = f64::from_be_bytes(cars[(16 * car_idx + 8)..(16 * car_idx + 16)]);
+            buffer_cars[car_idx] = (x, y);
+        }
+        for bezier_idx in 0..(bezier.len() / 64) {
+            let p1x = f64::from_be_bytes(cars[(64 * car_idx)..(64 * car_idx + 8)]);
+            let p1y = f64::from_be_bytes(cars[(64 * car_idx + 8)..(64 * car_idx + 16)]);
+            let p2x = f64::from_be_bytes(cars[(64 * car_idx + 16)..(64 * car_idx + 24)]);
+            let p2y = f64::from_be_bytes(cars[(64 * car_idx + 24)..(64 * car_idx + 32)]);
+            let p3x = f64::from_be_bytes(cars[(64 * car_idx + 32)..(64 * car_idx + 40)]);
+            let p3y = f64::from_be_bytes(cars[(64 * car_idx + 40)..(64 * car_idx + 48)]);
+            let p4x = f64::from_be_bytes(cars[(64 * car_idx + 48)..(64 * car_idx + 56)]);
+            let p4y = f64::from_be_bytes(cars[(64 * car_idx + 56)..(64 * car_idx + 64)]);
+            buffer_bezier[bezier_idx] = (p1x, p1y);
+            buffer_bezier[bezier_idx + 1] = (p2x, p2y);
+            buffer_bezier[bezier_idx + 2] = (p3x, p3y);
+            buffer_bezier[bezier_idx + 3] = (p4x, p4y);
+        }
+    }
+}
+
+unsafe fn draw_cars(car: (f64, f64)) {
+    DrawCircle(
+        car.0,
+        car.1,
+        20.0,
+        Color {
+            r: 255,
+            g: 0,
+            b: 0,
+            a: 255,
+        },
+    );
+}
+
+unsafe fn draw_bez(buffer: &Vec<f32>) {
+    for i in 1..(buffer.len() / 4) {
+        DrawSplineSegmentBezierCubic(
+            buffer[4 * i],
+            buffer[4 * i + 1],
+            buffer[4 * i + 2],
+            buffer[4 * i + 3],
+            4.,
+            Color::WHITE,
+        )
+    }
+}
+
 pub fn main_game(network: &mut network::Network) {
-    unsafe {
+    let (width, height) = (GetScreenWidth(), GetScreenHeight());
+    let mut buffer_cars = Vec::new();
+    let mut buffer_bezier = Vec::new();
+    recv_data(network, buffer_cars, buffer_bezier);
+    while !WindowShouldClose() {
+        draw!({
+            ClearBackground(Color {
+                r: 0,
+                g: 0,
+                b: 0,
+                a: 255,
+            });
+            buffer_cars.iter().map(|car| draw_cars(car));
+            buffer_cars.iter().map(|car| draw_cars(car));
+        });
+    }
+
+    /*unsafe {
         let (width, height) = (GetScreenWidth(), GetScreenHeight());
         let track = Track::new(width, height);
 
@@ -298,7 +397,7 @@ pub fn main_game(network: &mut network::Network) {
             }
             network.send(&data);
 
-            if network.recv(&mut data) > 0 {
+            if network.recv(&mut data) {
                 let mut track_seg = [0_u8; 1];
                 for i in 0..1 {
                     track_seg[i] = data[i];
@@ -312,5 +411,5 @@ pub fn main_game(network: &mut network::Network) {
                 car2.new_pos();
             }
         }
-    }
+    }*/
 }

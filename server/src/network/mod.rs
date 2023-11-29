@@ -8,7 +8,7 @@ use std::time;
 use std::vec::Vec;
 
 mod connection;
-mod packet;
+pub mod packet;
 mod pipe;
 pub mod player;
 mod room;
