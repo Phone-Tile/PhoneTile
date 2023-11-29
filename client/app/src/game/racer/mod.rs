@@ -245,7 +245,7 @@ impl Track {
 fn send_data(network: &mut network::Network) {
     let buffer = [IsMouseButtonDown(
         MouseButton_MOUSE_BUTTON_LEFT.try_into().unwrap(),
-    )];
+    ) as u8];
     network.send(&buffer);
 }
 
@@ -308,13 +308,13 @@ unsafe fn draw_cars(car: (f64, f64)) {
     );
 }
 
-unsafe fn draw_bez(buffer: &Vec<f32>) {
-    for i in 1..(buffer.len() / 8) {
+unsafe fn draw_bez(buffer: &Vec<(f64,f64)>) {
+    for i in 1..(buffer.len() / 4) {
         DrawSplineSegmentBezierCubic(
-            Vector2(buffer[8 * i], buffer[8 * i + 1]),
-            Vector2(buffer[8 * i + 2], buffer[8 * i + 3]),
-            Vector2(buffer[8 * i + 4], buffer[8 * i + 5]),
-            Vector2(buffer[8 * i + 6], buffer[8 * i + 7]),
+            Vector2{ x: buffer[4 * i].0, y: buffer[4 * i].1 },
+            Vector2{ x: buffer[4 * i + 1].0, y: buffer[4 * i + 1].1 },
+            Vector2{ x: buffer[4 * i + 2].0, y: buffer[4 * i + 2].1 },
+            Vector2{ x: buffer[4 * i + 3].0, y: buffer[4 * i + 3].1 },
             4.,
             crate::ui::color::Color::WHITE,
         )
