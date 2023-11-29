@@ -78,7 +78,13 @@ pub fn racer(players: &mut [player::Player]) -> Result<(), std::io::Error> {
     for player in players.iter() {
         dimensions.push((player.physical_width as f64, player.physical_height as f64))
     }
-    let mut game = game::Game::new(vec![], players.len(), &dimensions)?;
+    let mut game = match game::Game::new(vec![], players.len(), &dimensions) {
+        Ok(game) => game,
+        Err(err) => {
+            println!("{:?}", err);
+            panic!("{:?}", err);           
+        },
+    };
     loop {
         let raw_data = encode_data(&game);
         send_data(players, &raw_data);

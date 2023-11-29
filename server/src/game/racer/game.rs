@@ -10,7 +10,7 @@ const ACC_RATE: f64 = 1.;
 const DECC_RATE: f64 = -1.2;
 const SPEED_EXCESS: f64 = 0.3;
 const FRICTION: f64 = 0.1;
-const DT: f64 = 1. / 60. * 1.; // * 0.01 mieux
+const DT: f64 = 1. / 60. * 0.01; 
 
 /// The game structure. `Game.map` is the continuous sequence of bezier curves forming the curcuit and `Game.cars` is the list of cars present on the circuit.
 pub struct Game {
@@ -172,7 +172,7 @@ impl Game {
     pub fn update_position(&mut self, car_idx: usize, accelerate: bool) {
         // Random bullshit, GO! v(t+dt) = (a-f*v(t))*dt
         self.cars[car_idx].speed += ((if accelerate { ACC_RATE } else { DECC_RATE })
-            - FRICTION * self.cars[car_idx].speed)
+            - FRICTION * self.cars[car_idx].speed * self.cars[car_idx].speed)
             * DT;
 
         let grad = self.map[self.cars[car_idx].curve_index].compute_grad(self.cars[car_idx].t);
