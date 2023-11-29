@@ -311,10 +311,10 @@ unsafe fn draw_cars(car: (f64, f64)) {
 unsafe fn draw_bez(buffer: &Vec<(f64,f64)>) {
     for i in 1..(buffer.len() / 4) {
         DrawSplineSegmentBezierCubic(
-            Vector2{ x: buffer[4 * i].0, y: buffer[4 * i].1 },
-            Vector2{ x: buffer[4 * i + 1].0, y: buffer[4 * i + 1].1 },
-            Vector2{ x: buffer[4 * i + 2].0, y: buffer[4 * i + 2].1 },
-            Vector2{ x: buffer[4 * i + 3].0, y: buffer[4 * i + 3].1 },
+            Vector2{ x: buffer[4 * i].0 as f32    , y: buffer[4 * i].1 as f32 },
+            Vector2{ x: buffer[4 * i + 1].0 as f32, y: buffer[4 * i + 1].1 as f32},
+            Vector2{ x: buffer[4 * i + 2].0 as f32, y: buffer[4 * i + 2].1 as f32},
+            Vector2{ x: buffer[4 * i + 3].0 as f32, y: buffer[4 * i + 3].1 as f32},
             4.,
             crate::ui::color::Color::WHITE,
         )
