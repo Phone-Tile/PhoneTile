@@ -66,7 +66,7 @@ extern "C" fn main() {
             raylib_str!("Holla from phone_tile : Try to connect"),
         );
 
-        let mut socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(193, 168, 1, 1)),8888);
+        let mut socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)),8888);
 
         let mut network =network::Network::connect(&socket,GetMonitorPhysicalHeight(monitor) as f32, GetMonitorPhysicalWidth(monitor) as f32, screen_height as u32, screen_width as u32);
         TraceLog(
@@ -102,10 +102,11 @@ extern "C" fn main() {
 
         let mut network = network.unwrap();
 
-
+        keyboard.reset_value();
 
         let mut room = 0;
         let mut is_host = false;
+        let mut want_join = false;
 
         while !WindowShouldClose() {
             draw!({
@@ -113,6 +114,34 @@ extern "C" fn main() {
 
                 match network.get_status() {
                     network::Status::Connected => {
+
+
+                        if want_join {
+                            let mut val = keyboard.get_value();
+                            DrawText(
+                                raylib_str!(format!("Room ID :")),
+                                ((screen_width as f32)*(1.5/9.)) as c_int,
+                                ((screen_height as f32)*(1./13.)) as c_int,
+                                ((screen_height as f32)*(1./13.)) as c_int,
+                                colors::YELLOW
+                            );
+                            DrawText(
+                                raylib_str!(val),
+                                ((screen_width as f32)*(2./5.)) as c_int,
+                                ((screen_height as f32)*(2.1/13.)) as c_int,
+                                ((screen_height as f32)*(1.9/13.)) as c_int,
+                                colors::YELLOW
+                            );
+                            keyboard.draw();
+                            keyboard.update();
+
+                            if val.matches(".").count() > 0 {
+                                val.pop();
+                                let room = val.parse().unwrap();
+                                keyboard.reset_value();
+                                network.join_room(room).unwrap();
+                            }
+                        }else{
                         DrawText(
                             raylib_str!("Phone"),
                             ((screen_width as f32)*(1./9.)) as c_int,
@@ -131,20 +160,15 @@ extern "C" fn main() {
                         button::create_room(screen_height, screen_width).draw();
                         button::join_room(screen_height, screen_width).draw();
 
-                        /* 
-                        if button::create_room().colision() {
-                            button::create_room().change_foreground_color(colors::BLUE);
-                        };
-                        if button::join_room().colision() {
-                            button::join_room().change_foreground_color(colors::BLUE);
-                        };*/
                         if button::create_room(screen_height, screen_width).click() {
                             is_host = true;
                             room = network.create_room().unwrap();
                         };
                         if button::join_room(screen_height, screen_width).click() {
                             // TODO : TYPE ID;
-                            network.join_room(1).unwrap();
+                            want_join = true;
+
+                        }
                         }
                     }
                     network::Status::Disconnected => {
