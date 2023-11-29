@@ -338,7 +338,7 @@ pub unsafe fn main_game(network: &mut network::Network) {
     let (width, height) = (GetScreenWidth(), GetScreenHeight());
     let mut buffer_cars = Vec::new();
     let mut buffer_bezier = Vec::new();
-    recv_data(network, buffer_cars, buffer_bezier);
+    recv_data(network, &mut buffer_cars, &mut buffer_bezier);
     while !WindowShouldClose() {
         draw!({
             ClearBackground(Color {
