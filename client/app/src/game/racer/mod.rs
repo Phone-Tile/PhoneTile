@@ -276,29 +276,29 @@ fn recv_data(
         for car_idx in 0..(cars.len() / 16) {
             let mut temp_cars = [0_u8; 8];
             temp_cars.copy_from_slice(&cars[(16 * car_idx)..(16 * car_idx + 8)]);
-            let x = f64::from_be_bytes(&temp_cars);
+            let x = f64::from_be_bytes(temp_cars);
             temp_cars.copy_from_slice(&cars[(16 * car_idx + 8)..(16 * car_idx + 16)]);
-            let y = f64::from_be_bytes(&temp_cars);
+            let y = f64::from_be_bytes(temp_cars);
             buffer_cars[car_idx] = (x, y);
         }
         for bezier_idx in 0..(bezier.len() / 64) {
             let mut temp_cars = [0_u8; 8];
             temp_cars.copy_from_slice(&cars[(64 * bezier_idx)..(64 * bezier_idx+ 8)]);
-            let p1x = f64::from_be_bytes(&temp_cars);
+            let p1x = f64::from_be_bytes(temp_cars);
             temp_cars.copy_from_slice(&cars[(64 * bezier_idx + 8)..(64 * bezier_idx+ 16)]);
-            let p1y = f64::from_be_bytes(&temp_cars);
+            let p1y = f64::from_be_bytes(temp_cars);
             temp_cars.copy_from_slice(&cars[(64 * bezier_idx + 16)..(64 * bezier_idx + 24)]);
-            let p2x = f64::from_be_bytes(&temp_cars);
+            let p2x = f64::from_be_bytes(temp_cars);
             temp_cars.copy_from_slice(&cars[(64 * bezier_idx + 24)..(64 * bezier_idx + 32)]);
-            let p2y = f64::from_be_bytes(&temp_cars);
+            let p2y = f64::from_be_bytes(temp_cars);
             temp_cars.copy_from_slice(&cars[(64 * bezier_idx + 32)..(64 * bezier_idx + 40)]);
-            let p3x = f64::from_be_bytes(&temp_cars);
+            let p3x = f64::from_be_bytes(temp_cars);
             temp_cars.copy_from_slice(&cars[(64 * bezier_idx + 40)..(64 * bezier_idx + 48)]);
-            let p3y = f64::from_be_bytes(&temp_cars);
+            let p3y = f64::from_be_bytes(temp_cars);
             temp_cars.copy_from_slice(&cars[(64 * bezier_idx + 48)..(64 * bezier_idx + 56)]);
-            let p4x = f64::from_be_bytes(&temp_cars);
+            let p4x = f64::from_be_bytes(temp_cars);
             temp_cars.copy_from_slice(&cars[(64 * bezier_idx + 56)..(64 * bezier_idx + 64)]);
-            let p4y = f64::from_be_bytes(&temp_cars);
+            let p4y = f64::from_be_bytes(temp_cars);
             buffer_bezier[bezier_idx] = (p1x, p1y);
             buffer_bezier[bezier_idx + 1] = (p2x, p2y);
             buffer_bezier[bezier_idx + 2] = (p3x, p3y);
@@ -329,7 +329,7 @@ unsafe fn draw_bez(buffer: &Vec<(f64,f64)>) {
             Vector2{ x: buffer[4 * i + 2].0 as f32, y: buffer[4 * i + 2].1 as f32},
             Vector2{ x: buffer[4 * i + 3].0 as f32, y: buffer[4 * i + 3].1 as f32},
             4.,
-            crate::ui::colors::Color::WHITE,
+            crate::ui::colors::WHITE,
         )
     }
 }
