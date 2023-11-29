@@ -334,7 +334,7 @@ unsafe fn draw_bez(buffer: &Vec<(f64,f64)>) {
     }
 }
 
-pub fn main_game(network: &mut network::Network) {
+pub unsafe fn main_game(network: &mut network::Network) {
     let (width, height) = (GetScreenWidth(), GetScreenHeight());
     let mut buffer_cars = Vec::new();
     let mut buffer_bezier = Vec::new();
