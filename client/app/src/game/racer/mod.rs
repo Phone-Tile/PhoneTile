@@ -243,7 +243,7 @@ impl Track {
     }
 }
 
-fn send_data(network: &mut network::Network) {
+unsafe fn send_data(network: &mut network::Network) {
     let buffer = [IsMouseButtonDown(
         MouseButton_MOUSE_BUTTON_LEFT.try_into().unwrap(),
     ) as u8];
@@ -252,8 +252,8 @@ fn send_data(network: &mut network::Network) {
 
 fn recv_data(
     network: &mut network::Network,
-    buffer_cars: Vec<(f64, f64)>,
-    buffer_bezier: Vec<(f64, f64)>,
+    buffer_cars: &mut Vec<(f64, f64)>,
+    buffer_bezier: &mut Vec<(f64, f64)>,
 ) {
     let mut update_data = [0_u8; packet::MAX_DATA_SIZE];
     let mut new_data = update_data.clone();
