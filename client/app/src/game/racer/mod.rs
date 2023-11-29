@@ -325,10 +325,10 @@ unsafe fn draw_bez(buffer: &Vec<(f64,f64)>) {
     let (width, height) = (GetScreenWidth(), GetScreenHeight());
     for i in 0..(buffer.len() / 4) {
         DrawSplineSegmentBezierCubic(
-            Vector2{ x: buffer[4 * i].0 as f32 * width    , y: buffer[4 * i].1 as f32 * height},
-            Vector2{ x: buffer[4 * i + 1].0 as f32 * width, y: buffer[4 * i + 1].1 as f32 * height},
-            Vector2{ x: buffer[4 * i + 2].0 as f32 * width, y: buffer[4 * i + 2].1 as f32 * height},
-            Vector2{ x: buffer[4 * i + 3].0 as f32 * width, y: buffer[4 * i + 3].1 as f32 * height},
+            Vector2{ x: buffer[4 * i].0 as f32 * width as f32   , y: buffer[4 * i].1 as f32 * height as f32},
+            Vector2{ x: buffer[4 * i + 1].0 as f32 * width as f32, y: buffer[4 * i + 1].1 as f32 * height as f32},
+            Vector2{ x: buffer[4 * i + 2].0 as f32 * width as f32, y: buffer[4 * i + 2].1 as f32 * height as f32},
+            Vector2{ x: buffer[4 * i + 3].0 as f32 * width as f32, y: buffer[4 * i + 3].1 as f32 * height as f32},
             4.,
             crate::ui::colors::WHITE,
         )
