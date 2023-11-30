@@ -170,7 +170,7 @@ extern "C" fn main() {
                         if join_room.click() {
                             want_join = true;
                         }
-                    }
+                    }}
                     network::Status::Disconnected => {
                         DrawText(
                             raylib_str!("Sorry, network unsable :("),
