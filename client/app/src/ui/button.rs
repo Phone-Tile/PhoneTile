@@ -4,6 +4,7 @@ use raylib::{raylib_str, Color, DrawRectangle, Vector2, DrawText, Rectangle, IsM
 use std::convert::TryInto;
 use crate::ui::colors;
 
+#[derive(Clone, Copy)]
 pub struct Style {
     foreground: Color,
     background: Color,
@@ -28,6 +29,29 @@ impl Style {
 impl Button {
     pub fn new(loc: Rectangle, style: Style, text: Option<String>, text_pos_x: f32) -> Button {
         Button { loc, style, text, text_pos_x }
+    }
+
+    pub fn new_ratio(px : f32, py : f32, pwidth : f32, pheight:f32, style: Style,text: Option<String>, screen_width : f32, screen_height : f32) -> Button {
+        Self::new(
+            raylib::Rectangle {
+                x: ((screen_width as f32)* px) as c_float,
+                y: ((screen_height as f32)* py) as c_float,
+                width: ((screen_width as f32)* pwidth) as c_float,
+                height: ((screen_height as f32)* pheight) as c_float,
+            },
+            style,
+            text,
+            25 as c_float,
+        )
+    }
+
+    pub fn get_text(&self) -> Option<String> {
+        match &self.text {
+            None => None,
+            Some(text) => {
+                Some(text.to_string())
+            }
+        }
     }
 }
 
@@ -216,33 +240,3 @@ pub fn golf(screen_height: i32, screen_width: i32) -> Button {
         1./6. * (screen_width as f32) as c_float,
     ) 
 }
-
-/*
-pub fn game_select() -> Button {
-    Button::new(
-        raylib::Rectangle {
-            x: 200.0,
-            y: 400.0,
-            width: 1000.0,
-            height: 300.0,
-        },
-        Style::new(colors::WHITE, colors::GREEN),
-        Some(format!("Start1")),
-    ) 
-} */
-
-/* 
-pub const RACER: Button = Button {
-    loc: Rectangle {
-        x: 100.0,
-        y: 400.0,
-        width: 1000.0,
-        height: 300.0,
-    },
-    style: Style {
-        foreground: colors::WHITE,
-        background: colors::PURPLE,
-    },
-    text: None,
-};
-*/

@@ -1,6 +1,7 @@
 use std::fmt::Display;
 use std::io::{Error, ErrorKind, Read, Write};
-use std::net::TcpStream;
+use std::net::{TcpStream, ToSocketAddrs, SocketAddr};
+use std::time::Duration;
 use std::{thread, time};
 
 pub mod packet;
@@ -95,12 +96,13 @@ impl Network {
 
     /// Connect to the server, you must do this action BEFORE ANYTHING ELSE
     pub fn connect(
+        address : &SocketAddr,
         physical_height: f32,
         physical_width: f32,
         window_height: u32,
         window_width: u32,
     ) -> Result<Self, Error> {
-        match TcpStream::connect("10.0.2.2:8888") {
+        match TcpStream::connect_timeout(address, Duration::from_secs(1)) {
             Ok(stream) => {
                 stream.set_nonblocking(true)?;
                 let mut network = Network {
