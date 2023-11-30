@@ -1,11 +1,46 @@
-use crate::network;
-use raylib;
+use crate::{network::{self, packet}, ui::colors};
+use raylib::{self, GetRandomValue, Vector2, Color};
 use std::{convert::TryInto, ffi::{c_int, c_float}, vec};
 use std::cmp;
+use c_char;
+use time;
+
+//////////////////////////////////////////////
+///
+///
+/// Consts
+///
+///
+//////////////////////////////////////////////
 
 const SPRITE_SIZE: c_int = 80;
+const BULLET_SIZE: c_int = 20;
 const WALL_THICKNESS: c_float = 10.;
 
+//////////////////////////////////////////////
+///
+///
+/// Entity
+///
+///
+//////////////////////////////////////////////
+
+struct Entity {
+    pub pos: raylib::Vector2,
+    pub dir: raylib::Vector2,
+    pub size: c_int,
+    pub color: Color,
+}
+
+//////////////////////////////////////////////
+///
+///
+/// Wall
+///
+///
+//////////////////////////////////////////////
+
+#[derive(Debug)]
 struct Wall {
     pub start: raylib::Vector2,
     pub end: raylib::Vector2,
@@ -19,7 +54,7 @@ impl Wall {
         }
     }
 
-    pub fn realign_sprite(&self, sprite: &mut raylib::Vector2) {
+    pub fn realign_sprite(&self, sprite: &mut raylib::Vector2, size: c_int) {
         // first check if this is pertinent to check for colisions
         let mut col = raylib::Vector2 {x: self.end.x - self.start.x , y: self.end.y - self.start.y };
         let mut norm = (col.x*col.x + col.y*col.y).sqrt();
@@ -48,8 +83,8 @@ impl Wall {
         //     self.correct_allong_axe(sprite, normal);
         // }
 
-        let realign1 = self.correct_allong_axe(sprite, col);
-        let realign2 = self.correct_allong_axe(sprite, normal);
+        let realign1 = self.correct_allong_axe(sprite, col, size);
+        let realign2 = self.correct_allong_axe(sprite, normal, size);
         if realign1.abs() > realign2.abs() {
             sprite.x -= realign2 * normal.x;
             sprite.y -= realign2 * normal.y;
@@ -57,34 +92,52 @@ impl Wall {
             sprite.x -= realign1 * col.x;
             sprite.y -= realign1 * col.y;
         }
-
     }
 
-    fn check_might_intersect_along_axe(&self, sprite: &mut raylib::Vector2, axe: raylib::Vector2) -> bool {
-        // project the cube
-        let proj1 = axe.x*sprite.x + axe.y*sprite.y;
-        let proj2 = axe.x*(sprite.x+SPRITE_SIZE as c_float) + axe.y*sprite.y;
-        let proj3 = axe.x*sprite.x + axe.y*(sprite.y+SPRITE_SIZE as c_float);
-        let proj4 = axe.x*(sprite.x+SPRITE_SIZE as c_float) + axe.y*(sprite.y+SPRITE_SIZE as c_float);
+    pub fn intersect(&self, sprite: &mut raylib::Vector2, size: c_int) -> bool {
+        // first check if this is pertinent to check for colisions
+        let mut col = raylib::Vector2 {x: self.end.x - self.start.x , y: self.end.y - self.start.y };
+        let mut norm = (col.x*col.x + col.y*col.y).sqrt();
 
-        let threashold = axe.x*self.end.x + axe.y*self.end.y;
+        if norm == 0. {
+            return false;
+        }
 
-        let max = Self::fuck_max( Self::fuck_max(proj1, proj2), Self::fuck_max(proj3, proj4) );
-        let min = Self::fuck_min( Self::fuck_min(proj1, proj2), Self::fuck_min(proj3, proj4) );
+        col.x /= norm;
+        col.y /= norm;
 
-        if max > threashold && min < threashold {
-            true
-        } else {
+        // the idea is to project the square on a vector perpendicular to the wall and look if the point projection of the line is in the projection of the cube
+        let mut normal = raylib::Vector2 {x: - (self.end.y - self.start.y) , y: self.end.x - self.start.x };
+        norm = (normal.x*normal.x + normal.y*normal.y).sqrt();
+
+        if norm == 0. {
+            return false;
+        }
+
+        normal.x /= norm;
+        normal.y /= norm;
+
+
+        // if (self.check_might_intersect_along_axe(sprite, col) && self.check_might_intersect_along_axe(sprite,normal)) {
+        //     self.correct_allong_axe(sprite, col);
+        //     self.correct_allong_axe(sprite, normal);
+        // }
+
+        let realign1 = self.correct_allong_axe(sprite, col, size);
+        let realign2 = self.correct_allong_axe(sprite, normal, size);
+        if realign1.abs() == 0. || realign2.abs() == 0. {
             false
+        } else {
+            true
         }
     }
 
-    fn correct_allong_axe(&self, sprite: &mut raylib::Vector2, axe: raylib::Vector2) -> f32 {
+    fn correct_allong_axe(&self, sprite: &mut raylib::Vector2, axe: raylib::Vector2, size: c_int) -> f32 {
         // project the cube
         let proj1 = axe.x*sprite.x + axe.y*sprite.y;
-        let proj2 = axe.x*(sprite.x+SPRITE_SIZE as c_float) + axe.y*sprite.y;
-        let proj3 = axe.x*sprite.x + axe.y*(sprite.y+SPRITE_SIZE as c_float);
-        let proj4 = axe.x*(sprite.x+SPRITE_SIZE as c_float) + axe.y*(sprite.y+SPRITE_SIZE as c_float);
+        let proj2 = axe.x*(sprite.x+size as c_float) + axe.y*sprite.y;
+        let proj3 = axe.x*sprite.x + axe.y*(sprite.y+size as c_float);
+        let proj4 = axe.x*(sprite.x+size as c_float) + axe.y*(sprite.y+size as c_float);
 
         let mut threashold_min = axe.x*self.end.x + axe.y*self.end.y;
         let mut threashold_max = axe.x*self.start.x + axe.y*self.start.y;
@@ -122,68 +175,209 @@ impl Wall {
     }
 }
 
-pub fn maze_fight() {
-    unsafe {
-        let screen_height = raylib::GetScreenHeight();
-        let screen_width = raylib::GetScreenWidth();
+//////////////////////////////////////////////
+///
+///
+/// Entry point
+///
+///
+//////////////////////////////////////////////
 
-        let squarre_size = screen_width/10;
-
-        let mut record_central_pos = raylib::Vector2 { x: 0., y: 0. };
-        let mut sprite_pos = raylib::Vector2 { x: 0., y:0. };
-        let mut update_pos = raylib::Vector2 { x: 0., y:0. };
-
-        raylib::SetTargetFPS(60);
-
-        let w = Wall {
-            start: raylib::Vector2 { x: 100., y: 100. },
-            end: raylib::Vector2 { x: 100., y: screen_height as f32 - 100. },
-            color: raylib::Color { r: 0, g: 0, b: 0, a: 255 },
-        };
-
-        loop {
-            if raylib::IsMouseButtonPressed(raylib::MouseButton_MOUSE_BUTTON_LEFT.try_into().unwrap()) {
-                record_central_pos = raylib::GetMousePosition();
-            }
-
-            if raylib::IsMouseButtonDown(raylib::MouseButton_MOUSE_BUTTON_LEFT.try_into().unwrap()) {
-                update_pos = raylib::GetMousePosition();
-            }
-
-            if raylib::IsMouseButtonReleased(raylib::MouseButton_MOUSE_BUTTON_LEFT.try_into().unwrap()) {
-                record_central_pos = raylib::Vector2 { x: 0., y:0. };
-                update_pos = raylib::Vector2 { x: 0., y:0. };
-            }
-
-            let mut speed = raylib::Vector2 { x: update_pos.x - record_central_pos.x, y: update_pos.y - record_central_pos.y };
-            let mut norm = speed.x*speed.x + speed.y*speed.y;
-            norm = norm.sqrt();
-            if norm > 20. {
-                norm /= 20.;
-                speed.x /= norm;
-                speed.y /= norm;
-            }
-
-            sprite_pos.x += speed.x;
-            sprite_pos.y += speed.y;
-
-            w.realign_sprite(&mut sprite_pos);
-
-            raylib::draw!({
-                raylib::ClearBackground(raylib::Color {
-                    r: 65,
-                    g: 65,
-                    b: 65,
-                    a: 255,
-                });
-    
-                let start = raylib::Vector2 { x: 100., y: 0. };
-                let end = raylib::Vector2 { x: 100., y: screen_height as f32 };
-                w.draw();
-                // raylib::DrawLineEx(start, end, 300., raylib::Color { r: 0, g: 0, b: 0, a: 255 });
-
-                raylib::DrawRectangle(sprite_pos.x as i32, sprite_pos.y as i32, SPRITE_SIZE, SPRITE_SIZE, raylib::Color { r: 0, g: 0, b: 0, a: 255 });
-            });
-        }
+pub unsafe fn main_game(network: &mut network::Network) {
+    let mut buffer = [0_u8; network::packet::MAX_DATA_SIZE];
+    while network.recv(&mut buffer) == 0  {
+        std::thread::sleep(std::time::Duration::from_millis(10));
     }
+
+    let maze = unpack_maze(&buffer);
+
+    let mut sprites: Vec<Entity> = vec::Vec::new();
+    let mut bullets: Vec<Entity> = vec::Vec::new();
+
+    let mut record_central_pos = raylib::Vector2 { x: 0., y: 0. };
+    let mut update_pos = raylib::Vector2 { x: 0., y:0. };
+
+    let mut internal_timer = time::Instant::now();
+
+    loop {
+        for p in sprites.iter_mut() {
+            p.pos.x += p.dir.x * internal_timer.elapsed().as_secs_f32()*50.;
+            p.pos.y += p.dir.y * internal_timer.elapsed().as_secs_f32()*50.;
+
+            for w in maze.iter() {
+                w.realign_sprite(&mut p.pos, p.size);
+            }
+        }
+
+        // update bullet status
+        let mut i = 0;
+        while i < bullets.len() {
+            let b = &mut bullets[i];
+            b.pos.x += b.dir.x * internal_timer.elapsed().as_secs_f32()*50.;
+            b.pos.y += b.dir.y * internal_timer.elapsed().as_secs_f32()*50.;
+            if b.pos.x < 0. || b.pos.y < 0. || b.pos.x > 5000. || b.pos.y > 5000. {
+                bullets.swap_remove(i);
+            } else {
+                i += 1;
+                for w in maze.iter() {
+                    if w.intersect(&mut b.pos, b.size) {
+                        i -= 1;
+                        bullets.swap_remove(i);
+                        break;
+                    }
+                }
+            }
+        }
+
+        let mut buffer = [0_u8; packet::MAX_DATA_SIZE];
+        let mut anex = [0_u8; packet::MAX_DATA_SIZE];
+        let n1 = network.recv(&mut anex);
+        let mut n = 0;
+        loop {
+            buffer.copy_from_slice(&anex);
+            n = network.recv(&mut anex);
+            if n == 0 {
+                break;
+            }
+        }
+        if n1 > 0 {
+            (sprites, bullets) = unpack_game_data(&buffer);
+        }
+        internal_timer = time::Instant::now();
+
+        if raylib::IsMouseButtonPressed(raylib::MouseButton_MOUSE_BUTTON_LEFT.try_into().unwrap()) {
+            record_central_pos = raylib::GetMousePosition();
+        }
+
+        if raylib::IsMouseButtonDown(raylib::MouseButton_MOUSE_BUTTON_LEFT.try_into().unwrap()) {
+            update_pos = raylib::GetMousePosition();
+        }
+
+        if raylib::IsMouseButtonReleased(raylib::MouseButton_MOUSE_BUTTON_LEFT.try_into().unwrap()) {
+            record_central_pos = raylib::Vector2 { x: 0., y:0. };
+            update_pos = raylib::Vector2 { x: 0., y:0. };
+        }
+
+        let mut speed = raylib::Vector2 { x: (update_pos.x - record_central_pos.x)/10., y: (update_pos.y - record_central_pos.y)/10. };
+        send_speed(network, speed);
+
+        raylib::draw!({
+            raylib::ClearBackground(raylib::Color {
+                r: 65,
+                g: 65,
+                b: 65,
+                a: 255,
+            });
+            for w in maze.iter() {
+                w.draw();
+            }
+            for b in bullets.iter() {
+                raylib::DrawRectangle(b.pos.x as i32, b.pos.y as i32, b.size, b.size, b.color);
+            }
+            for s in sprites.iter() {
+                raylib::DrawRectangle(s.pos.x as i32, s.pos.y as i32, s.size, s.size, s.color);
+            }
+        });
+    }
+}
+
+//////////////////////////////////////////////
+///
+///
+/// Maze unpacking
+///
+///
+//////////////////////////////////////////////
+
+fn unpack_maze(_data: &[u8]) -> Vec<Wall> {
+    let mut buffer = [0_u8;2];
+    buffer.copy_from_slice(&_data[..2]);
+    let n = u16::from_be_bytes(buffer) as usize;
+    let data = &_data[2..];
+    let mut res = vec::Vec::new();
+    for i in 0..n {
+        let mut buffer = [0_u8; 4];
+
+        buffer.copy_from_slice(&data[i*16..i*16+4]);
+        let start_x = f32::from_be_bytes(buffer);
+        buffer.copy_from_slice(&data[i*16+4..i*16+8]);
+        let start_y = f32::from_be_bytes(buffer);
+        buffer.copy_from_slice(&data[i*16+8..i*16+12]);
+        let end_x = f32::from_be_bytes(buffer);
+        buffer.copy_from_slice(&data[i*16+12..i*16+16]);
+        let end_y = f32::from_be_bytes(buffer);
+        res.push(Wall {start: Vector2 {x: start_x, y: start_y}, end: Vector2 { x: end_x, y: end_y }, color: colors::BLACK} );
+    }
+    res
+}
+
+fn unpack_game_data(_data: &[u8]) -> (Vec<Entity>, Vec<Entity>) {
+    let n1 = _data[0] as usize;
+    let data1 = &_data[1..];
+    let mut sprites = vec::Vec::new();
+
+    for i in 0..n1 {
+        let mut buffer = [0_u8; 4];
+
+        buffer.copy_from_slice(&data1[i*23..i*23+4]);
+        let pos_x = f32::from_be_bytes(buffer);
+        buffer.copy_from_slice(&data1[i*23+4..i*23+8]);
+        let pos_y = f32::from_be_bytes(buffer);
+
+        buffer.copy_from_slice(&data1[i*23+8..i*23+12]);
+        let speed_x = f32::from_be_bytes(buffer);
+        buffer.copy_from_slice(&data1[i*23+12..i*23+16]);
+        let speed_y = f32::from_be_bytes(buffer);
+
+        buffer.copy_from_slice(&data1[i*23+16..i*23+20]);
+        let size = f32::from_be_bytes(buffer);
+
+        sprites.push( Entity { pos: Vector2 { x: pos_x, y: pos_y }, dir: Vector2 { x: speed_x, y: speed_y }, size: size as c_int,
+            color: Color { r: u8::from_be(data1[i*23+20]), g: u8::from_be(data1[i*23+21]), b: u8::from_be(data1[i*23+22]), a: 255 } } );
+    }
+
+    let _data2 = &data1[n1*23..];
+    let n2 = _data2[0] as usize;
+    let data2 = &_data2[1..];
+    let mut bullets = vec::Vec::new();
+
+    for i in 0..n2 {
+        let mut buffer = [0_u8; 4];
+
+        buffer.copy_from_slice(&data2[i*20..i*20+4]);
+        let pos_x = f32::from_be_bytes(buffer);
+        buffer.copy_from_slice(&data2[i*20+4..i*20+8]);
+        let pos_y = f32::from_be_bytes(buffer);
+
+        buffer.copy_from_slice(&data2[i*20+8..i*20+12]);
+        let speed_x = f32::from_be_bytes(buffer);
+        buffer.copy_from_slice(&data2[i*20+12..i*20+16]);
+        let speed_y = f32::from_be_bytes(buffer);
+
+        buffer.copy_from_slice(&data2[i*20+16..i*20+20]);
+        let size = f32::from_be_bytes(buffer);
+
+        bullets.push( Entity { pos: Vector2 { x: pos_x, y: pos_y }, dir: Vector2 { x: speed_x, y: speed_y }, size: size as c_int,
+            color: raylib::Color { r: 255, g: 0, b: 0, a: 255 } } );
+    }
+    (sprites, bullets)
+}
+
+//////////////////////////////////////////////
+///
+///
+/// Sender
+///
+///
+//////////////////////////////////////////////
+
+fn send_speed(network: &mut network::Network, speed: Vector2) {
+    let mut data = [0_u8; 8];
+
+    let mut buffer = speed.x.to_be_bytes();
+    data[..4].copy_from_slice(&buffer);
+    buffer = speed.y.to_be_bytes();
+    data[4..].copy_from_slice(&buffer);
+
+    network.send(&data).unwrap();
 }

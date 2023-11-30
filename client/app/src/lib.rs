@@ -54,6 +54,7 @@ extern "C" fn main() {
 
         let mut keyboard = Keyboard::new(screen_width as f32, screen_height as f32);
 
+        //game::maze_fight::maze_fight();
         raylib::ChangeDirectory(raylib_str!("assets"));
 
         SetTargetFPS(60);
@@ -67,7 +68,8 @@ extern "C" fn main() {
 
         let mut socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)),8888);
 
-        let mut network =network::Network::connect(&socket,GetMonitorPhysicalHeight(monitor) as f32, GetMonitorPhysicalWidth(monitor) as f32, screen_height as u32, screen_width as u32);
+        let mut network = network::Network::connect(&socket,1547., 757., screen_height as u32, screen_width as u32).unwrap();
+        // let mut network =network::Network::connect(&socket,GetMonitorPhysicalHeight(monitor) as f32, GetMonitorPhysicalWidth(monitor) as f32, screen_height as u32, screen_width as u32);
         TraceLog(
             TraceLogLevel_LOG_ERROR.try_into().unwrap(),
             raylib_str!("Holla from phone_tile : Try end to connect"),
@@ -212,7 +214,7 @@ extern "C" fn main() {
                                 network.lock_room(network::Game::Racer).unwrap();
                             }
                             if snake.click() {
-                                network.lock_room(network::Game::Test).unwrap();
+                                network.lock_room(network::Game::MazeFighter).unwrap();
                             }
                             if golf.click() {
                                 network.lock_room(network::Game::Unknown).unwrap();
@@ -265,7 +267,7 @@ extern "C" fn main() {
 
             DrawFPS(10, 10);
         }
-        game::racer::main_game(&mut network);
+        game::maze_fight::main_game(&mut network);
         CloseWindow();
     }
 

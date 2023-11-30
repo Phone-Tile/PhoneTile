@@ -19,6 +19,7 @@ pub mod packet;
 #[derive(Clone, Copy)]
 pub enum Game {
     Racer,
+    MazeFight,
     Test,
     Unknown,
 }
@@ -27,6 +28,7 @@ impl From<Game> for u16 {
     fn from(value: Game) -> Self {
         match value {
             Game::Racer => 1,
+            Game::MazeFight => 2,
             Game::Test => 0x80,
             Game::Unknown => 0xff,
         }
@@ -37,6 +39,7 @@ impl From<u16> for Game {
     fn from(value: u16) -> Self {
         match value {
             1 => Game::Racer,
+            2 => Game::MazeFight,
             0x80 => Game::Test,
             _ => Game::Unknown,
         }
@@ -47,6 +50,7 @@ impl Display for Game {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Game::Racer => write!(f, "Racer"),
+            Game::MazeFight => write!(f, "Maze-Fight"),
             Game::Test => write!(f, "Test"),
             Game::Unknown => write!(f, "Unknown"),
         }
