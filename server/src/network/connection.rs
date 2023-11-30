@@ -372,7 +372,6 @@ impl Connection {
                     return Err(Error::new(ErrorKind::BrokenPipe, "pipe with game broken"))
                 }
             };
-            thread::sleep(time::Duration::from_millis(5));
         }
         Ok(())
     }
