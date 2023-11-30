@@ -49,11 +49,10 @@ pub struct Vector2 {
 ///
 //////////////////////////////////////////////
 
-struct localPlayer {
+struct LocalPlayer {
     pos: Vector2,
     speed: Vector2,
     id: usize,
-    player: usize,
     timer: time::Instant,
     color: Color,
     is_dead: bool,
@@ -128,7 +127,7 @@ const ORANGE: Color = Color {
     b: 20,
 };
 
-const COLOR_LIST: [Color; 7] = [BLACK, WHITE, BLUE, YELLOW, PURPLE, ORANGE, PINK];
+const COLOR_LIST: [Color; 8] = [BLACK, WHITE, BLUE, GREEN, YELLOW, PURPLE, ORANGE, PINK];
 
 
 //////////////////////////////////////////////
@@ -147,14 +146,13 @@ pub fn maze_fight(players: &mut [network::player::Player]) -> Result<(), Error> 
     for p in players.iter_mut() {
         let packed_maze = maze::pack_maze(p, &maze);
         p.send(&packed_maze)?;
-        players_system.push(localPlayer {
+        players_system.push(LocalPlayer {
             pos: Vector2 {
                 x: p.physical_width / 2. + p.top_left_x,
                 y: p.physical_height / 2. + p.top_left_y,
             },
             speed: Vector2 { x: 0., y: 0. },
             id: p.rank as usize,
-            player: i,
             timer: time::Instant::now(),
             color: COLOR_LIST[i],
             is_dead: false,
@@ -243,7 +241,7 @@ pub fn maze_fight(players: &mut [network::player::Player]) -> Result<(), Error> 
 
 fn send_game_data(
     p: &mut player::Player,
-    players: &Vec<localPlayer>,
+    players: &Vec<LocalPlayer>,
     bullets: &Vec<bullet::Bullet>,
 ) -> Result<(), Error> {
     let mut data = vec::Vec::new();
@@ -265,7 +263,8 @@ fn send_game_data(
             data.append(&mut pos_x.to_vec());
             data.append(&mut pos_y.to_vec());
     
-            let (vx, vy) = p.to_local_coordinates(player.speed.x, player.speed.y);
+            let vx = p.to_local_proportion(player.speed.x);
+            let vy = p.to_local_proportion(player.speed.y);
     
             let speed_x = vx.to_be_bytes();
             let speed_y = vy.to_be_bytes();
@@ -296,7 +295,8 @@ fn send_game_data(
         data.append(&mut pos_x.to_vec());
         data.append(&mut pos_y.to_vec());
 
-        let (vx, vy) = p.to_local_coordinates(bullet.dir.x, bullet.dir.y);
+        let vx = p.to_local_proportion(bullet.dir.x);
+        let vy = p.to_local_proportion(bullet.dir.y);
 
         let speed_x = vx.to_be_bytes();
         let speed_y = vy.to_be_bytes();
@@ -314,17 +314,15 @@ fn send_game_data(
     p.send(&data)
 }
 
-fn recv_game_data(p: &mut player::Player,players: &mut Vec<localPlayer>,) {
+fn recv_game_data(p: &mut player::Player,players: &mut Vec<LocalPlayer>,) {
     let mut buffer = [0_u8; packet::MAX_DATA_SIZE];
     let mut anex = [0_u8; packet::MAX_DATA_SIZE];
     let n1 = p.recv(&mut anex).unwrap();
-    let mut n = 0;
-    loop {
+    buffer.copy_from_slice(&anex);
+    let mut n = p.recv(&mut anex).unwrap();
+    while n > 0 {
         buffer.copy_from_slice(&anex);
         n = p.recv(&mut anex).unwrap();
-        if n == 0 {
-            break;
-        }
     }
     if n1 > 0 {
         for pp in players.iter_mut() {

@@ -66,9 +66,10 @@ extern "C" fn main() {
             raylib_str!("Holla from phone_tile : Try to connect"),
         );
 
-        let mut socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)),8888);
+        // let mut socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 2)),8888);
+        let mut socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(138, 231, 145, 62)),8888); //138.231.145.62
 
-        let mut network = network::Network::connect(&socket,1547., 757., screen_height as u32, screen_width as u32).unwrap();
+        let mut network = network::Network::connect(&socket,1547., 757., screen_height as u32, screen_width as u32);
         // let mut network =network::Network::connect(&socket,GetMonitorPhysicalHeight(monitor) as f32, GetMonitorPhysicalWidth(monitor) as f32, screen_height as u32, screen_width as u32);
         TraceLog(
             TraceLogLevel_LOG_ERROR.try_into().unwrap(),
@@ -98,7 +99,7 @@ extern "C" fn main() {
             }
             val.pop();
             socket.set_ip(IpAddr::from_str(format!("{val}").as_str()).unwrap());
-            network = network::Network::connect(&socket,GetMonitorPhysicalHeight(monitor) as f32, GetMonitorPhysicalWidth(monitor) as f32, screen_height as u32, screen_width as u32);
+            network = network::Network::connect(&socket,1547., 757., screen_height as u32, screen_width as u32);
         }
 
         let mut network = network.unwrap();
@@ -214,7 +215,7 @@ extern "C" fn main() {
                                 network.lock_room(network::Game::Racer).unwrap();
                             }
                             if snake.click() {
-                                network.lock_room(network::Game::MazeFighter).unwrap();
+                                network.lock_room(network::Game::MazeFight).unwrap();
                             }
                             if golf.click() {
                                 network.lock_room(network::Game::Unknown).unwrap();
