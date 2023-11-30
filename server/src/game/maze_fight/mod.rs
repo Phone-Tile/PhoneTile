@@ -1,9 +1,9 @@
 use crate::network::packet;
 use crate::network::{self, player};
 use std::io::Error;
+use std::thread;
 use std::time;
 use std::vec;
-use std::thread;
 
 //////////////////////////////////////////////
 ///
@@ -73,11 +73,7 @@ struct Color {
     b: u8,
 }
 
-const BLACK: Color = Color {
-    r: 0,
-    g: 0,
-    b: 0,
-};
+const BLACK: Color = Color { r: 0, g: 0, b: 0 };
 
 const WHITE: Color = Color {
     r: 255,
@@ -109,12 +105,6 @@ const PINK: Color = Color {
     b: 255,
 };
 
-const RED: Color = Color {
-    r: 250,
-    g: 0,
-    b: 23,
-};
-
 const YELLOW: Color = Color {
     r: 255,
     g: 184,
@@ -128,7 +118,6 @@ const ORANGE: Color = Color {
 };
 
 const COLOR_LIST: [Color; 8] = [BLACK, WHITE, BLUE, GREEN, YELLOW, PURPLE, ORANGE, PINK];
-
 
 //////////////////////////////////////////////
 ///
@@ -190,10 +179,10 @@ pub fn maze_fight(players: &mut [network::player::Player]) -> Result<(), Error> 
                         p.id,
                     ));
                 }
-    
-                p.pos.x += p.speed.x * internal_timer.elapsed().as_secs_f32()*50.;
-                p.pos.y += p.speed.y * internal_timer.elapsed().as_secs_f32()*50.;
-    
+
+                p.pos.x += p.speed.x * internal_timer.elapsed().as_secs_f32() * 50.;
+                p.pos.y += p.speed.y * internal_timer.elapsed().as_secs_f32() * 50.;
+
                 for w in maze.iter() {
                     w.realign_sprite(&mut p.pos, SPRITE_SIZE);
                 }
@@ -204,8 +193,8 @@ pub fn maze_fight(players: &mut [network::player::Player]) -> Result<(), Error> 
         i = 0;
         while i < bullets.len() {
             let b = &mut bullets[i];
-            b.pos.x += b.dir.x * internal_timer.elapsed().as_secs_f32()*50.;
-            b.pos.y += b.dir.y * internal_timer.elapsed().as_secs_f32()*50.;
+            b.pos.x += b.dir.x * internal_timer.elapsed().as_secs_f32() * 50.;
+            b.pos.y += b.dir.y * internal_timer.elapsed().as_secs_f32() * 50.;
             if b.pos.x < 0. || b.pos.y < 0. || b.pos.x > 5000. || b.pos.y > 5000. {
                 bullets.swap_remove(i);
             } else {
@@ -223,7 +212,12 @@ pub fn maze_fight(players: &mut [network::player::Player]) -> Result<(), Error> 
         // update dead status
         for p in players_system.iter_mut() {
             for b in bullets.iter() {
-                if b.id != p.id && b.pos.x > p.pos.x && b.pos.x < p.pos.x+SPRITE_SIZE as f32 && b.pos.y > p.pos.y && b.pos.y < p.pos.y+SPRITE_SIZE as f32 {
+                if b.id != p.id
+                    && b.pos.x > p.pos.x
+                    && b.pos.x < p.pos.x + SPRITE_SIZE as f32
+                    && b.pos.y > p.pos.y
+                    && b.pos.y < p.pos.y + SPRITE_SIZE as f32
+                {
                     p.is_dead = true;
                 }
             }
@@ -241,8 +235,8 @@ pub fn maze_fight(players: &mut [network::player::Player]) -> Result<(), Error> 
 
 fn send_game_data(
     p: &mut player::Player,
-    players: &Vec<LocalPlayer>,
-    bullets: &Vec<bullet::Bullet>,
+    players: &[LocalPlayer],
+    bullets: &[bullet::Bullet],
 ) -> Result<(), Error> {
     let mut data = vec::Vec::new();
     let mut players_playing = 0;
@@ -259,25 +253,25 @@ fn send_game_data(
 
             let pos_x = x.to_be_bytes();
             let pos_y = y.to_be_bytes();
-    
+
             data.append(&mut pos_x.to_vec());
             data.append(&mut pos_y.to_vec());
-    
+
             let vx = p.to_local_proportion(player.speed.x);
             let vy = p.to_local_proportion(player.speed.y);
-    
+
             let speed_x = vx.to_be_bytes();
             let speed_y = vy.to_be_bytes();
-    
+
             data.append(&mut speed_x.to_vec());
             data.append(&mut speed_y.to_vec());
-    
+
             let _size = p.to_local_proportion(SPRITE_SIZE as f32);
-    
+
             let size = _size.to_be_bytes();
-    
+
             data.append(&mut size.to_vec());
-    
+
             data.push(player.color.r.to_be());
             data.push(player.color.g.to_be());
             data.push(player.color.b.to_be());
@@ -314,7 +308,7 @@ fn send_game_data(
     p.send(&data)
 }
 
-fn recv_game_data(p: &mut player::Player,players: &mut Vec<LocalPlayer>,) {
+fn recv_game_data(p: &mut player::Player, players: &mut [LocalPlayer]) {
     let mut buffer = [0_u8; packet::MAX_DATA_SIZE];
     let mut anex = [0_u8; packet::MAX_DATA_SIZE];
     let n1 = p.recv(&mut anex).unwrap();
