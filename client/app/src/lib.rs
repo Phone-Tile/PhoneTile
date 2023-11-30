@@ -66,8 +66,7 @@ extern "C" fn main() {
             raylib_str!("Holla from phone_tile : Try to connect"),
         );
 
-        // let mut socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 2)),8888);
-        let mut socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(138, 231, 145, 62)),8888); //138.231.145.62
+        let mut socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 2)),8888);
 
         let mut network = network::Network::connect(&socket,1547., 757., screen_height as u32, screen_width as u32);
         // let mut network =network::Network::connect(&socket,GetMonitorPhysicalHeight(monitor) as f32, GetMonitorPhysicalWidth(monitor) as f32, screen_height as u32, screen_width as u32);
