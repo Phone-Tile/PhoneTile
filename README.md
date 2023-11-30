@@ -4,16 +4,16 @@
 
 Welcome to PhoneTile !
 
-Why play on separate screens when you can combine them all to live a unique game experience ?
-PhoneTile is a small app for Android plaftforms that helps developer to implement games using a unique feature : the map is shared between the different screens and players can move everywhere !
+Why play on separate screens when you can combine them all to live a unique gaming experience ?
+PhoneTile is a small app for Android platforms where developers can implement their games using a unique feature : the game map is shared between any number of phone screens, and players can move wherever they want on the map !
 
-For example, one can enjoy the [racer game](./server/src/game/racer/). Click on your phone and the car accelerates, switch phones and win the race against your friends !
+For example, you can launch the game [RACER](./server/src/game/racer/). Press on your phone and the car accelerates, move your car from your screen to your friend's screen and win the race !
 
 ## Basic usage
 
-To use this app, you'll need :
+To code your game on this app, you'll need :
 - To like rust enough
-- To write a front end and a back end file for your game (respectively in [the client side](./client/app/src/game/) and [the server side](./server/src/game/))
+- To write a frontend and a backend file for your game (respectively in [the client side](./client/app/src/game/) and [the server side](./server/src/game/))
 - And a bit of love and patience
 
 ## Server
@@ -23,16 +23,16 @@ Look [here](https://github.com/Phone-Tile/PhoneTile/blob/main/server/README.md) 
 
 ## Client
 
-This part is the funniest ! You'll need to follow the "not that complicated but long process" described [here](https://github.com/Phone-Tile/PhoneTile/blob/main/client/README.md).
+This part is the funnest ! You'll need to follow the not-that-complicated-but-long process described [here](https://github.com/Phone-Tile/PhoneTile/blob/main/client/README.md).
 
 ## Usage
 
-Now that you've build every thing, you just need to launch the server on your computer, download the apk on every phone and you're set-and-ready to play !
+Now that you've built everything, you just need to launch the server on your computer, download the apk on every phone and you're set-and-ready to play !
 
 # Contribute
 
-The basic idea of the app is that it is possible and quite easy to add your own game to the show. We developped our framework so that our networking library do all of the linking stuff for you and you can completly focus on developping the app of your dreams ! The only small detail : you have to code in Rust. Every contribution or bug repport is relly apreaciated ! Just do a pull request or write a bug ticket and we'll be happy to discuss with you.
+We've developed the app with interoperability in mind : it is possible and quite easy to add your own game to PhoneTile. We developed our framework so that our networking library does all of the linking stuff for you and you can completely focus on developing the app of your dreams ! One tiny detail : you have to code in Rust. Every contribution or bug report is relly apreaciated ! Just do a pull request or write a bug ticket and we'll be happy to discuss it with you.
 
 # Notes
 
-For now, the software in very UNSTABLE. Please wait for the first stable release to have a reliable framework.
+For now, the software is very UNSTABLE. Please wait for the first stable release to have a reliable framework.
