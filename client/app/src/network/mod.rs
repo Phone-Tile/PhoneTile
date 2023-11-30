@@ -211,13 +211,13 @@ impl Network {
 
     /// Receive data from the server ; this action can only be done in game
     /// It return the amount of data read
-    pub fn recv(&mut self, buffer: &mut [u8; packet::MAX_DATA_SIZE]) -> bool {
+    pub fn recv(&mut self, buffer: &mut [u8; packet::MAX_DATA_SIZE]) -> usize {
         match packet::Packet::try_recv_packet(&mut self.stream) {
             Some(packet) => {
                 buffer.copy_from_slice(&packet.data);
-                true
+                packet.size
             }
-            None => false,
+            None => 0,
         }
     }
 

@@ -43,7 +43,6 @@ extern "C" fn main() {
         let screen_width = GetScreenWidth();
         let screen_height = GetScreenHeight();
 
-
         TraceLog(
             TraceLogLevel_LOG_ERROR.try_into().unwrap(),
             raylib_str!("Hello from phone_tile"),
@@ -108,13 +107,14 @@ extern "C" fn main() {
         let mut is_host = false;
         let mut want_join = false;
 
+        let mut is_host = false;
+
         while !WindowShouldClose() {
             draw!({
                 ClearBackground(colors::BLACK);
 
                 match network.get_status() {
                     network::Status::Connected => {
-
 
                         if want_join {
                             let mut val = keyboard.get_value();
@@ -170,7 +170,6 @@ extern "C" fn main() {
                         if join_room.click() {
                             want_join = true;
                         }
-                        }
                     }
                     network::Status::Disconnected => {
                         DrawText(
@@ -222,16 +221,6 @@ extern "C" fn main() {
                             waiting_text(screen_height, screen_width) 
                         }
                     }
-                    // network::Status::SelectedGame => {
-                    //     // if host
-                    //     button::RACER.draw();
-                    //     if button::RACER.colision() {
-                    //         button::RACER.change_foreground_color(colors::BLUE);
-                    //     };
-                    //     if button::RACER.click() {
-                    //         network.lock_room(network::Game::Racer).unwrap();
-                    //     }
-                    // }
                     network::Status::InLockRoom(n) => {
                         DrawText(
                             raylib_str!(format!("Take your")),

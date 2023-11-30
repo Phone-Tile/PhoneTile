@@ -240,33 +240,3 @@ pub fn golf(screen_height: i32, screen_width: i32) -> Button {
         1./6. * (screen_width as f32) as c_float,
     ) 
 }
-
-/*
-pub fn game_select() -> Button {
-    Button::new(
-        raylib::Rectangle {
-            x: 200.0,
-            y: 400.0,
-            width: 1000.0,
-            height: 300.0,
-        },
-        Style::new(colors::WHITE, colors::GREEN),
-        Some(format!("Start1")),
-    ) 
-} */
-
-/* 
-pub const RACER: Button = Button {
-    loc: Rectangle {
-        x: 100.0,
-        y: 400.0,
-        width: 1000.0,
-        height: 300.0,
-    },
-    style: Style {
-        foreground: colors::WHITE,
-        background: colors::PURPLE,
-    },
-    text: None,
-};
-*/
