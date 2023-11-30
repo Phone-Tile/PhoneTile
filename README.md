@@ -9,30 +9,30 @@ PhoneTile is a small app for Android platforms where developers can implement th
 
 For example, you can launch the game [RACER](./server/src/game/racer/). Press on your phone and the car accelerates, move your car from your screen to your friend's screen and win the race !
 
-## Basic usage
+## How to create your game on PhoneTile
 
 To code your game on this app, you'll need :
 - To like rust enough
 - To write a frontend and a backend file for your game (respectively in [the client side](./client/app/src/game/) and [the server side](./server/src/game/))
 - And a bit of love and patience
 
-## Server
+### Server
 
 The app relies on a server so you'll need to use a computer and let the incomming traffic on the 8888 port go through. </br>
 Look [here](https://github.com/Phone-Tile/PhoneTile/blob/main/server/README.md) for details on how to build and run the server.
 
-## Client
+### Client
 
 This part is the funnest ! You'll need to follow the not-that-complicated-but-long process described [here](https://github.com/Phone-Tile/PhoneTile/blob/main/client/README.md).
 
-## Usage
+### Usage
 
 Now that you've built everything, you just need to launch the server on your computer, download the apk on every phone and you're set-and-ready to play !
 
-# Contribute
+## Contribute
 
-We've developed the app with interoperability in mind : it is possible and quite easy to add your own game to PhoneTile. We developed our framework so that our networking library does all of the linking stuff for you and you can completely focus on developing the app of your dreams ! One tiny detail : you have to code in Rust. Every contribution or bug report is relly apreaciated ! Just do a pull request or write a bug ticket and we'll be happy to discuss it with you.
+We've developed the app with modularity in mind : it is possible and quite easy to add your own game to PhoneTile. We developed our framework so that our networking library does all of the linking stuff for you and you can completely focus on developing the app of your dreams ! One tiny detail : you have to code in Rust. Every contribution or bug report is relly apreaciated ! Just do a pull request or write a bug ticket and we'll be happy to discuss it with you.
 
-# Notes
+## Notes
 
 For now, the software is very UNSTABLE. Please wait for the first stable release to have a reliable framework.
