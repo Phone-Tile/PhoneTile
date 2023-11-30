@@ -175,7 +175,7 @@ pub fn maze_fight(players: &mut [network::player::Player]) -> Result<(), Error> 
 
         // update player status
         for p in players_system.iter_mut() {
-            //if !p.is_dead {
+            if !p.is_dead {
                 let mut norm = p.speed.x * p.speed.x + p.speed.y * p.speed.y;
                 norm = norm.sqrt();
                 if p.timer.elapsed().as_millis() > weapon::FIRERING_SPEED && norm > 0. {
@@ -199,7 +199,7 @@ pub fn maze_fight(players: &mut [network::player::Player]) -> Result<(), Error> 
                 for w in maze.iter() {
                     w.realign_sprite(&mut p.pos, SPRITE_SIZE);
                 }
-            //}
+            }
         }
 
         // update bullet status
