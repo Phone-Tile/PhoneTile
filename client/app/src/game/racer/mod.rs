@@ -5,11 +5,10 @@ use std::ffi::{c_float, c_int};
 use c_char;
 
 use raylib::{
-    ClearBackground, CloseWindow, Color, DrawCircle, DrawFPS, DrawRectanglePro,
-    DrawSplineSegmentBezierCubic, DrawSplineSegmentLinear, DrawText, DrawTexture, GetScreenHeight,
-    GetScreenWidth, GetSplinePointBezierCubic, GetSplinePointLinear, IsMouseButtonDown,
-    IsMouseButtonPressed, LoadTexture, MouseButton, MouseButton_MOUSE_BUTTON_LEFT, Rectangle,
-    SetTargetFPS, TraceLog, TraceLogLevel_LOG_ERROR, UnloadTexture, Vector2, WindowShouldClose,
+    ClearBackground, Color, DrawCircle, DrawFPS, DrawRectanglePro, DrawSplineSegmentBezierCubic,
+    DrawSplineSegmentLinear, DrawText, GetScreenHeight, GetScreenWidth, GetSplinePointBezierCubic,
+    GetSplinePointLinear, IsMouseButtonDown, MouseButton_MOUSE_BUTTON_LEFT, Rectangle,
+    SetTargetFPS, Vector2, WindowShouldClose,
 };
 
 use raylib::{draw, raylib_str};
@@ -249,7 +248,7 @@ pub fn main_game(network: &mut network::Network) {
 
         let mut car = Car::new(&track);
         let mut car2 = Car::new(&track);
-        let mut is_click = false;
+        let is_click = false;
 
         SetTargetFPS(60);
 
@@ -296,7 +295,7 @@ pub fn main_game(network: &mut network::Network) {
             for i in 0..4 {
                 data[i + 1] = track_t[i];
             }
-            network.send(&data);
+            let _ = network.send(&data);
 
             if network.recv(&mut data) > 0 {
                 let mut track_seg = [0_u8; 1];

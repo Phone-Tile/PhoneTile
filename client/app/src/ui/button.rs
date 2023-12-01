@@ -1,8 +1,7 @@
-use std::ffi::{c_char, c_int, c_float};
+use std::ffi::{c_char, c_float, c_int};
 
-use raylib::{raylib_str, Color, DrawRectangle, Vector2, DrawText, Rectangle, IsMouseButtonDown, IsMouseButtonPressed, IsMouseButtonReleased, MouseButton_MOUSE_BUTTON_LEFT, GetMousePosition};
-use std::convert::TryInto;
 use crate::ui::colors;
+use raylib::{raylib_str, Color, DrawRectangle, DrawText, Rectangle};
 
 #[derive(Clone, Copy)]
 pub struct Style {
@@ -28,16 +27,30 @@ impl Style {
 
 impl Button {
     pub fn new(loc: Rectangle, style: Style, text: Option<String>, text_pos_x: f32) -> Button {
-        Button { loc, style, text, text_pos_x }
+        Button {
+            loc,
+            style,
+            text,
+            text_pos_x,
+        }
     }
 
-    pub fn new_ratio(px : f32, py : f32, pwidth : f32, pheight:f32, style: Style,text: Option<String>, screen_width : f32, screen_height : f32) -> Button {
+    pub fn new_ratio(
+        px: f32,
+        py: f32,
+        pwidth: f32,
+        pheight: f32,
+        style: Style,
+        text: Option<String>,
+        screen_width: f32,
+        screen_height: f32,
+    ) -> Button {
         Self::new(
             raylib::Rectangle {
-                x: ((screen_width as f32)* px) as c_float,
-                y: ((screen_height as f32)* py) as c_float,
-                width: ((screen_width as f32)* pwidth) as c_float,
-                height: ((screen_height as f32)* pheight) as c_float,
+                x: ((screen_width as f32) * px) as c_float,
+                y: ((screen_height as f32) * py) as c_float,
+                width: ((screen_width as f32) * pwidth) as c_float,
+                height: ((screen_height as f32) * pheight) as c_float,
             },
             style,
             text,
@@ -48,9 +61,7 @@ impl Button {
     pub fn get_text(&self) -> Option<String> {
         match &self.text {
             None => None,
-            Some(text) => {
-                Some(text.to_string())
-            }
+            Some(text) => Some(text.to_string()),
         }
     }
 }
@@ -75,9 +86,9 @@ impl Draw for Button {
             if let Some(text) = &self.text {
                 DrawText(
                     raylib_str!(text),
-                    (self.loc.x+(self.text_pos_x)) as c_int,
-                    (self.loc.y+(self.loc.height/4.)) as c_int,
-                    (self.loc.height/2.) as c_int,
+                    (self.loc.x + (self.text_pos_x)) as c_int,
+                    (self.loc.y + (self.loc.height / 4.)) as c_int,
+                    (self.loc.height / 2.) as c_int,
                     self.style.background,
                 );
             }
@@ -106,7 +117,7 @@ impl Button {
             false
         }
     }
-    /* 
+    /*
     pub fn change_foreground_color(&self, color: Color) {
         unsafe{
             let x = self.loc.x;
@@ -129,7 +140,7 @@ impl Button {
                 ).draw()
             }
         }
-        
+
     }*/
     pub fn change_background_color(&self, color: Color) {
         todo!()
@@ -146,32 +157,32 @@ pub trait Draw {
 pub fn create_room(screen_height: i32, screen_width: i32) -> Button {
     Button::new(
         raylib::Rectangle {
-            x: ((screen_width as f32)*(1./5.)) as c_float,
-            y: ((screen_height as f32)*(5.5/11.)) as c_float,
-            width: ((screen_width as f32)*(3./5.)) as c_float,
-            height: ((screen_height as f32)*(1.5/11.)) as c_float,
+            x: ((screen_width as f32) * (1. / 5.)) as c_float,
+            y: ((screen_height as f32) * (5.5 / 11.)) as c_float,
+            width: ((screen_width as f32) * (3. / 5.)) as c_float,
+            height: ((screen_height as f32) * (1.5 / 11.)) as c_float,
         },
         Style::new(colors::WHITE, colors::RED),
         Some(format!("Create")),
-        1./24. * (screen_width as f32) as c_float,
+        1. / 24. * (screen_width as f32) as c_float,
     )
 }
 
 pub fn join_room(screen_height: i32, screen_width: i32) -> Button {
     Button::new(
         raylib::Rectangle {
-            x: ((screen_width as f32) * (1./5.)) as c_float,
-            y: ((screen_height as f32)*(8./11.)) as c_float,
-            width: ((screen_width as f32) * (3./5.)) as c_float,
-            height: ((screen_height as f32)*(1.5/11.)) as c_float,
+            x: ((screen_width as f32) * (1. / 5.)) as c_float,
+            y: ((screen_height as f32) * (8. / 11.)) as c_float,
+            width: ((screen_width as f32) * (3. / 5.)) as c_float,
+            height: ((screen_height as f32) * (1.5 / 11.)) as c_float,
         },
         Style::new(colors::WHITE, colors::ORANGE),
         Some(format!("Join")),
-        1./7. * (screen_width as f32) as c_float,
-    ) 
+        1. / 7. * (screen_width as f32) as c_float,
+    )
 }
 
-/* 
+/*
 pub fn game_select() -> Button {
     Button::new(
         raylib::Rectangle {
@@ -182,61 +193,61 @@ pub fn game_select() -> Button {
         },
         Style::new(colors::WHITE, colors::GREEN),
         Some(format!("Start1")),
-    ) 
+    )
 }*/
 
 pub fn start_game(screen_height: i32, screen_width: i32) -> Button {
     Button::new(
         raylib::Rectangle {
-            x: ((screen_width as f32)*(1./5.)) as c_float,
-            y: (screen_height as f32)*(7./13.) as c_float,
-            width: ((screen_width as f32)*(3./5.)) as c_float,
-            height: ((screen_height as f32)*(1.5/13.)) as c_float,
+            x: ((screen_width as f32) * (1. / 5.)) as c_float,
+            y: (screen_height as f32) * (7. / 13.) as c_float,
+            width: ((screen_width as f32) * (3. / 5.)) as c_float,
+            height: ((screen_height as f32) * (1.5 / 13.)) as c_float,
         },
         Style::new(colors::WHITE, colors::PINK),
         Some(format!("Start")),
-        1./7. * (screen_width as f32) as c_float,
-    ) 
+        1. / 7. * (screen_width as f32) as c_float,
+    )
 }
 
 pub fn racer(screen_height: i32, screen_width: i32) -> Button {
     Button::new(
         raylib::Rectangle {
-            x: ((screen_width as f32)*(1./5.)) as c_float,
-            y: ((screen_height as f32)*(4.5/13.)) as c_float,
-            width: ((screen_width as f32)*(3./5.)) as c_float,
-            height: ((screen_height as f32)*(1.5/13.)) as c_float,
+            x: ((screen_width as f32) * (1. / 5.)) as c_float,
+            y: ((screen_height as f32) * (4.5 / 13.)) as c_float,
+            width: ((screen_width as f32) * (3. / 5.)) as c_float,
+            height: ((screen_height as f32) * (1.5 / 13.)) as c_float,
         },
         Style::new(colors::WHITE, colors::GREEN),
         Some(format!("Racer")),
-        1./8. * (screen_width as f32) as c_float,
-    ) 
+        1. / 8. * (screen_width as f32) as c_float,
+    )
 }
 
 pub fn snake(screen_height: i32, screen_width: i32) -> Button {
     Button::new(
         raylib::Rectangle {
-            x: ((screen_width as f32)*(1./5.)) as c_float,
-            y: (screen_height as f32)*(7./13.) as c_float,
-            width: ((screen_width as f32)*(3./5.)) as c_float,
-            height: ((screen_height as f32)*(1.5/13.)) as c_float,
+            x: ((screen_width as f32) * (1. / 5.)) as c_float,
+            y: (screen_height as f32) * (7. / 13.) as c_float,
+            width: ((screen_width as f32) * (3. / 5.)) as c_float,
+            height: ((screen_height as f32) * (1.5 / 13.)) as c_float,
         },
         Style::new(colors::WHITE, colors::GREEN),
         Some(format!("Snake")),
-        1./9. * (screen_width as f32) as c_float,
-    ) 
+        1. / 9. * (screen_width as f32) as c_float,
+    )
 }
 
 pub fn golf(screen_height: i32, screen_width: i32) -> Button {
     Button::new(
         raylib::Rectangle {
-            x: ((screen_width as f32)*(1./5.)) as c_float,
-            y: (screen_height as f32)*(9.5/13.) as c_float,
-            width: ((screen_width as f32)*(3./5.)) as c_float,
-            height: ((screen_height as f32)*(1.5/13.)) as c_float,
+            x: ((screen_width as f32) * (1. / 5.)) as c_float,
+            y: (screen_height as f32) * (9.5 / 13.) as c_float,
+            width: ((screen_width as f32) * (3. / 5.)) as c_float,
+            height: ((screen_height as f32) * (1.5 / 13.)) as c_float,
         },
         Style::new(colors::WHITE, colors::GREEN),
         Some(format!("Golf")),
-        1./6. * (screen_width as f32) as c_float,
-    ) 
+        1. / 6. * (screen_width as f32) as c_float,
+    )
 }

@@ -1,8 +1,7 @@
 use std::fmt::Display;
-use std::io::{Error, ErrorKind, Read, Write};
-use std::net::{TcpStream, ToSocketAddrs, SocketAddr};
+use std::io::{Error, ErrorKind};
+use std::net::{SocketAddr, TcpStream};
 use std::time::Duration;
-use std::{thread, time};
 
 pub mod packet;
 
@@ -100,7 +99,7 @@ impl Network {
 
     /// Connect to the server, you must do this action BEFORE ANYTHING ELSE
     pub fn connect(
-        address : &SocketAddr,
+        address: &SocketAddr,
         physical_height: f32,
         physical_width: f32,
         window_height: u32,

@@ -1,5 +1,6 @@
 use crate::network::packet;
 use crate::network::{self, player};
+use rand;
 use std::io::Error;
 use std::thread;
 use std::time;
@@ -14,6 +15,7 @@ use std::vec;
 //////////////////////////////////////////////
 mod bullet;
 mod maze;
+mod powerup;
 mod weapon;
 
 //////////////////////////////////////////////
@@ -35,7 +37,7 @@ const BULLET_SIZE: usize = 20;
 ///
 //////////////////////////////////////////////
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Vector2 {
     pub x: f32,
     pub y: f32,
@@ -56,6 +58,8 @@ struct LocalPlayer {
     timer: time::Instant,
     color: Color,
     is_dead: bool,
+    modifiers: Vec<powerup::PowerUp>,
+    life: usize,
 }
 
 //////////////////////////////////////////////
@@ -130,6 +134,13 @@ const COLOR_LIST: [Color; 8] = [BLACK, WHITE, BLUE, GREEN, YELLOW, PURPLE, ORANG
 pub fn maze_fight(players: &mut [network::player::Player]) -> Result<(), Error> {
     let maze = maze::gen_walls(players);
 
+    let mut width: f32 = 0.;
+    let mut height: f32 = 0.;
+    for p in players.iter() {
+        width += p.physical_width;
+        height = height.max(p.physical_height);
+    }
+
     let mut players_system = vec::Vec::new();
     let mut i = 0;
     for p in players.iter_mut() {
@@ -145,6 +156,8 @@ pub fn maze_fight(players: &mut [network::player::Player]) -> Result<(), Error> 
             timer: time::Instant::now(),
             color: COLOR_LIST[i],
             is_dead: false,
+            modifiers: vec::Vec::new(),
+            life: 10,
         });
         i += 1;
     }
@@ -153,24 +166,51 @@ pub fn maze_fight(players: &mut [network::player::Player]) -> Result<(), Error> 
 
     let mut internal_timer = time::Instant::now();
 
+    let mut powerups = vec::Vec::new();
+    let mut last_modifier_gen = time::Instant::now();
+
+    for p in players.iter() {
+        for _ in 0..3 {
+            let x: f32 = rand::random::<f32>() * p.physical_width;
+            let y: f32 = rand::random::<f32>() * p.physical_height;
+            let powerup = (rand::random::<f32>() * powerup::POWERUP_COUNT as f32) as usize;
+
+            powerups.push(powerup::PowerUp::new(
+                powerup.into(),
+                Vector2 {
+                    x: x + p.top_left_x,
+                    y: y + p.top_left_y,
+                },
+            ));
+        }
+    }
+
     loop {
-        // send position of players, bullets and other ...
-
-        // receive new speed ...
-
-        // update game status
-
         // update player status
         for p in players_system.iter_mut() {
             if !p.is_dead {
+                let mut size_modifiers = SPRITE_SIZE as f32;
+                let mut firing_speed_modifiers = weapon::FIRERING_SPEED as f32;
+                for m in p.modifiers.iter() {
+                    if m.get_type() == powerup::Type::SizeUp
+                        || m.get_type() == powerup::Type::SizeDown
+                    {
+                        size_modifiers += m.modifier();
+                    }
+                    if m.get_type() == powerup::Type::FiringRateDown
+                        || m.get_type() == powerup::Type::FiringRateUp
+                    {
+                        firing_speed_modifiers += m.modifier();
+                    }
+                }
                 let mut norm = p.speed.x * p.speed.x + p.speed.y * p.speed.y;
                 norm = norm.sqrt();
-                if p.timer.elapsed().as_millis() > weapon::FIRERING_SPEED && norm > 0. {
+                if p.timer.elapsed().as_millis() > firing_speed_modifiers as u128 && norm > 0. {
                     p.timer = std::time::Instant::now();
                     bullets.push(bullet::Bullet::new(
                         Vector2 {
-                            x: p.pos.x + (SPRITE_SIZE / 2) as f32,
-                            y: p.pos.y + (SPRITE_SIZE / 2) as f32,
+                            x: p.pos.x + size_modifiers / 2.,
+                            y: p.pos.y + size_modifiers / 2.,
                         },
                         Vector2 {
                             x: bullet::BULLET_SPEED * p.speed.x / norm,
@@ -184,7 +224,16 @@ pub fn maze_fight(players: &mut [network::player::Player]) -> Result<(), Error> 
                 p.pos.y += p.speed.y * internal_timer.elapsed().as_secs_f32() * 50.;
 
                 for w in maze.iter() {
-                    w.realign_sprite(&mut p.pos, SPRITE_SIZE);
+                    w.realign_sprite(&mut p.pos, size_modifiers as usize);
+                }
+
+                let mut i = 0;
+                while i < p.modifiers.len() {
+                    if !p.modifiers[i].is_activated() {
+                        p.modifiers.swap_remove(i);
+                    } else {
+                        i += 1;
+                    }
                 }
             }
         }
@@ -211,22 +260,58 @@ pub fn maze_fight(players: &mut [network::player::Player]) -> Result<(), Error> 
 
         // update dead status
         for p in players_system.iter_mut() {
-            for b in bullets.iter() {
-                if b.id != p.id
-                    && b.pos.x > p.pos.x
-                    && b.pos.x < p.pos.x + SPRITE_SIZE as f32
-                    && b.pos.y > p.pos.y
-                    && b.pos.y < p.pos.y + SPRITE_SIZE as f32
-                {
-                    p.is_dead = true;
+            if !p.is_dead {
+                let mut i = 0;
+                while i < bullets.len() {
+                    let b = &bullets[i];
+                    if b.id != p.id
+                        && b.pos.x > p.pos.x
+                        && b.pos.x < p.pos.x + SPRITE_SIZE as f32
+                        && b.pos.y > p.pos.y
+                        && b.pos.y < p.pos.y + SPRITE_SIZE as f32
+                    {
+                        p.life -= 1;
+                        if p.life == 0 {
+                            p.is_dead = true;
+                        }
+                        bullets.remove(i);
+                    } else {
+                        i += 1;
+                    }
+                }
+                i = 0;
+                while i < powerups.len() {
+                    let powerup = &mut powerups[i];
+                    if powerup.pos().x > p.pos.x
+                        && powerup.pos().x < p.pos.x + SPRITE_SIZE as f32
+                        && powerup.pos().y > p.pos.y
+                        && powerup.pos().y < p.pos.y + SPRITE_SIZE as f32
+                    {
+                        powerup.activate();
+                        p.modifiers.push(*powerup);
+
+                        powerups.swap_remove(i);
+                    } else {
+                        i += 1;
+                    }
                 }
             }
+        }
+
+        // generate new modifiers
+        if last_modifier_gen.elapsed().as_secs() > 5 {
+            last_modifier_gen = time::Instant::now();
+            let x: f32 = rand::random::<f32>() * width;
+            let y: f32 = rand::random::<f32>() * height;
+            let powerup = (rand::random::<f32>() * powerup::POWERUP_COUNT as f32) as usize;
+
+            powerups.push(powerup::PowerUp::new(powerup.into(), Vector2 { x, y }));
         }
 
         internal_timer = time::Instant::now();
 
         for p in players.iter_mut() {
-            send_game_data(p, &players_system, &bullets)?;
+            send_game_data(p, &players_system, &bullets, &powerups)?;
             recv_game_data(p, &mut players_system);
         }
         thread::sleep(time::Duration::from_millis(10));
@@ -237,15 +322,22 @@ fn send_game_data(
     p: &mut player::Player,
     players: &[LocalPlayer],
     bullets: &[bullet::Bullet],
+    powerups: &[powerup::PowerUp],
 ) -> Result<(), Error> {
     let mut data = vec::Vec::new();
+    for player in players.iter() {
+        if player.id == p.rank as usize {
+            data.push((player.life as u8).to_be());
+        }
+    }
+
     let mut players_playing = 0;
     for p in players.iter() {
         if !p.is_dead {
             players_playing += 1;
         }
     }
-    data.push(players_playing as u8);
+    data.push((players_playing as u8).to_be());
 
     for player in players.iter() {
         if !player.is_dead {
@@ -266,7 +358,15 @@ fn send_game_data(
             data.append(&mut speed_x.to_vec());
             data.append(&mut speed_y.to_vec());
 
-            let _size = p.to_local_proportion(SPRITE_SIZE as f32);
+            let mut size_modifiers = 0.;
+            for m in player.modifiers.iter() {
+                if m.get_type() == powerup::Type::SizeUp || m.get_type() == powerup::Type::SizeDown
+                {
+                    size_modifiers += m.modifier();
+                }
+            }
+
+            let _size = p.to_local_proportion(SPRITE_SIZE as f32 + size_modifiers);
 
             let size = _size.to_be_bytes();
 
@@ -278,7 +378,7 @@ fn send_game_data(
         }
     }
 
-    data.push(bullets.len() as u8);
+    data.push((bullets.len() as u8).to_be());
 
     for bullet in bullets.iter() {
         let (x, y) = p.to_local_coordinates(bullet.pos.x, bullet.pos.y);
@@ -303,6 +403,18 @@ fn send_game_data(
         let size = _size.to_be_bytes();
 
         data.append(&mut size.to_vec());
+    }
+
+    data.push((powerups.len() as u8).to_be());
+
+    for powerup in powerups.iter() {
+        let (x, y) = p.to_local_coordinates(powerup.pos().x, powerup.pos().y);
+
+        let pos_x = x.to_be_bytes();
+        let pos_y = y.to_be_bytes();
+
+        data.append(&mut pos_x.to_vec());
+        data.append(&mut pos_y.to_vec());
     }
 
     p.send(&data)
@@ -331,9 +443,20 @@ fn recv_game_data(p: &mut player::Player, players: &mut [LocalPlayer]) {
                 let mut norm = pp.speed.x * pp.speed.x + pp.speed.y * pp.speed.y;
                 norm = norm.sqrt();
 
-                if norm > 10. {
-                    pp.speed.x *= 10. / norm;
-                    pp.speed.y *= 10. / norm;
+                let mut speed_modifiers = 0.;
+                for m in pp.modifiers.iter() {
+                    if m.get_type() == powerup::Type::SpeedDown
+                        || m.get_type() == powerup::Type::SpeedUp
+                    {
+                        speed_modifiers += m.modifier();
+                    }
+                }
+
+                let limit = 10. + speed_modifiers;
+
+                if norm > limit {
+                    pp.speed.x *= limit / norm;
+                    pp.speed.y *= limit / norm;
                 }
             }
         }

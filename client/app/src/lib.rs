@@ -1,6 +1,6 @@
 use std::convert::TryInto;
-use std::ffi::{c_char, c_float, c_int};
-use std::net::{SocketAddr, IpAddr, Ipv4Addr};
+use std::ffi::{c_char, c_int};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::str::FromStr;
 use std::time;
 
@@ -27,12 +27,10 @@ pub extern "C" fn ANativeActivity_onCreate(
 mod game;
 mod network;
 mod ui;
-use ui::keyboard::Keyboard;
-use ui::{button, keyboard};
-use ui::button::{
-    Button, Draw, Style
-};
+use ui::button;
+use ui::button::Draw;
 use ui::colors;
+use ui::keyboard::Keyboard;
 use ui::text::waiting_text;
 
 // Main function
@@ -59,16 +57,20 @@ extern "C" fn main() {
 
         SetTargetFPS(60);
 
-
-
         TraceLog(
             TraceLogLevel_LOG_ERROR.try_into().unwrap(),
             raylib_str!("Holla from phone_tile : Try to connect"),
         );
 
-        let mut socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 2)),8888);
+        let mut socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 2, 2)), 8888);
 
-        let mut network = network::Network::connect(&socket,1547., 757., screen_height as u32, screen_width as u32);
+        let mut network = network::Network::connect(
+            &socket,
+            1547.,
+            757.,
+            screen_height as u32,
+            screen_width as u32,
+        );
         // let mut network =network::Network::connect(&socket,GetMonitorPhysicalHeight(monitor) as f32, GetMonitorPhysicalWidth(monitor) as f32, screen_height as u32, screen_width as u32);
         TraceLog(
             TraceLogLevel_LOG_ERROR.try_into().unwrap(),
@@ -81,13 +83,13 @@ extern "C" fn main() {
             'window: while !WindowShouldClose() {
                 draw!({
                     ClearBackground(colors::BLACK);
-                        DrawText(
-                            raylib_str!(format!("Addr : {val}")),
-                            ((screen_width as f32)*(1./9.)) as c_int,
-                            ((screen_height as f32)*(1./11.)) as c_int,
-                            50,
-                            colors::BLUE,
-                        );
+                    DrawText(
+                        raylib_str!(format!("Addr : {val}")),
+                        ((screen_width as f32) * (1. / 9.)) as c_int,
+                        ((screen_height as f32) * (1. / 11.)) as c_int,
+                        50,
+                        colors::BLUE,
+                    );
                     keyboard.draw();
                     keyboard.update();
                 });
@@ -98,7 +100,13 @@ extern "C" fn main() {
             }
             val.pop();
             socket.set_ip(IpAddr::from_str(format!("{val}").as_str()).unwrap());
-            network = network::Network::connect(&socket,1547., 757., screen_height as u32, screen_width as u32);
+            network = network::Network::connect(
+                &socket,
+                1547.,
+                757.,
+                screen_height as u32,
+                screen_width as u32,
+            );
         }
 
         let mut network = network.unwrap();
@@ -106,7 +114,6 @@ extern "C" fn main() {
         keyboard.reset_value();
 
         let mut room = 0;
-        let mut is_host = false;
         let mut want_join = false;
 
         let mut is_host = false;
@@ -117,22 +124,21 @@ extern "C" fn main() {
 
                 match network.get_status() {
                     network::Status::Connected => {
-
                         if want_join {
                             let mut val = keyboard.get_value();
                             DrawText(
                                 raylib_str!(format!("Room ID :")),
-                                ((screen_width as f32)*(1.5/9.)) as c_int,
-                                ((screen_height as f32)*(1./13.)) as c_int,
-                                ((screen_height as f32)*(1./13.)) as c_int,
-                                colors::YELLOW
+                                ((screen_width as f32) * (1.5 / 9.)) as c_int,
+                                ((screen_height as f32) * (1. / 13.)) as c_int,
+                                ((screen_height as f32) * (1. / 13.)) as c_int,
+                                colors::YELLOW,
                             );
                             DrawText(
                                 raylib_str!(val),
-                                ((screen_width as f32)*(2./5.)) as c_int,
-                                ((screen_height as f32)*(2.1/13.)) as c_int,
-                                ((screen_height as f32)*(1.9/13.)) as c_int,
-                                colors::YELLOW
+                                ((screen_width as f32) * (2. / 5.)) as c_int,
+                                ((screen_height as f32) * (2.1 / 13.)) as c_int,
+                                ((screen_height as f32) * (1.9 / 13.)) as c_int,
+                                colors::YELLOW,
                             );
                             keyboard.draw();
                             keyboard.update();
@@ -143,36 +149,37 @@ extern "C" fn main() {
                                 keyboard.reset_value();
                                 network.join_room(room).unwrap();
                             }
-                        }else{
-                        DrawText(
-                            raylib_str!("Phone"),
-                            ((screen_width as f32)*(1./9.)) as c_int,
-                            ((screen_height as f32)*(1./11.)) as c_int,
-                            ((screen_height as f32)*(1.4/11.)) as c_int,
-                            colors::BLUE,
-                        );
-                        DrawText(
-                            raylib_str!("Tile"),
-                            ((screen_width as f32)*(2./9.)) as c_int,
-                            ((screen_height as f32)*(2.6/11.)) as c_int,
-                            ((screen_height as f32)*(1.4/11.)) as c_int,
-                            colors::PURPLE,
-                        );
+                        } else {
+                            DrawText(
+                                raylib_str!("Phone"),
+                                ((screen_width as f32) * (1. / 9.)) as c_int,
+                                ((screen_height as f32) * (1. / 11.)) as c_int,
+                                ((screen_height as f32) * (1.4 / 11.)) as c_int,
+                                colors::BLUE,
+                            );
+                            DrawText(
+                                raylib_str!("Tile"),
+                                ((screen_width as f32) * (2. / 9.)) as c_int,
+                                ((screen_height as f32) * (2.6 / 11.)) as c_int,
+                                ((screen_height as f32) * (1.4 / 11.)) as c_int,
+                                colors::PURPLE,
+                            );
 
-                        let create_room = button::create_room(screen_height, screen_width);
-                        let join_room = button::join_room(screen_height, screen_width);
+                            let create_room = button::create_room(screen_height, screen_width);
+                            let join_room = button::join_room(screen_height, screen_width);
 
-                        create_room.draw();
-                        join_room.draw();
+                            create_room.draw();
+                            join_room.draw();
 
-                        if create_room.click() {
-                            is_host = true;
-                            room = network.create_room().unwrap();
-                        };
-                        if join_room.click() {
-                            want_join = true;
+                            if create_room.click() {
+                                is_host = true;
+                                room = network.create_room().unwrap();
+                            };
+                            if join_room.click() {
+                                want_join = true;
+                            }
                         }
-                    }}
+                    }
                     network::Status::Disconnected => {
                         DrawText(
                             raylib_str!("Sorry, network unsable :("),
@@ -186,17 +193,17 @@ extern "C" fn main() {
                         if is_host {
                             DrawText(
                                 raylib_str!(format!("Room ID :")),
-                                ((screen_width as f32)*(1.5/9.)) as c_int,
-                                ((screen_height as f32)*(1./13.)) as c_int,
-                                ((screen_height as f32)*(1./13.)) as c_int,
-                                colors::YELLOW
+                                ((screen_width as f32) * (1.5 / 9.)) as c_int,
+                                ((screen_height as f32) * (1. / 13.)) as c_int,
+                                ((screen_height as f32) * (1. / 13.)) as c_int,
+                                colors::YELLOW,
                             );
                             DrawText(
                                 raylib_str!(format!("{}", room)),
-                                ((screen_width as f32)*(2./5.)) as c_int,
-                                ((screen_height as f32)*(2.1/13.)) as c_int,
-                                ((screen_height as f32)*(1.9/13.)) as c_int,
-                                colors::YELLOW
+                                ((screen_width as f32) * (2. / 5.)) as c_int,
+                                ((screen_height as f32) * (2.1 / 13.)) as c_int,
+                                ((screen_height as f32) * (1.9 / 13.)) as c_int,
+                                colors::YELLOW,
                             );
 
                             let racer = button::racer(screen_height, screen_width);
@@ -220,30 +227,30 @@ extern "C" fn main() {
                                 network.lock_room(network::Game::Unknown).unwrap();
                             }
                         } else {
-                            waiting_text(screen_height, screen_width) 
+                            waiting_text(screen_height, screen_width)
                         }
                     }
                     network::Status::InLockRoom(n) => {
                         DrawText(
                             raylib_str!(format!("Take your")),
-                            ((screen_width as f32)*(1./9.)) as c_int,
-                            ((screen_height as f32)*(1./13.)) as c_int,
-                            ((screen_height as f32)*(1./13.)) as c_int,
-                            colors::RED
+                            ((screen_width as f32) * (1. / 9.)) as c_int,
+                            ((screen_height as f32) * (1. / 13.)) as c_int,
+                            ((screen_height as f32) * (1. / 13.)) as c_int,
+                            colors::RED,
                         );
                         DrawText(
                             raylib_str!(format!("positions !")),
-                            ((screen_width as f32)*(1./9.)) as c_int,
-                            ((screen_height as f32)*(2./13.)) as c_int,
-                            ((screen_height as f32)*(1./13.)) as c_int,
-                            colors::RED
+                            ((screen_width as f32) * (1. / 9.)) as c_int,
+                            ((screen_height as f32) * (2. / 13.)) as c_int,
+                            ((screen_height as f32) * (1. / 13.)) as c_int,
+                            colors::RED,
                         );
                         DrawText(
                             raylib_str!(format!("{n}")),
-                            ((screen_width as f32)*(2./5.)) as c_int,
-                            ((screen_height as f32)*(4./13.)) as c_int,
-                            ((screen_height as f32)*(2./13.)) as c_int,
-                            colors::PURPLE
+                            ((screen_width as f32) * (2. / 5.)) as c_int,
+                            ((screen_height as f32) * (4. / 13.)) as c_int,
+                            ((screen_height as f32) * (2. / 13.)) as c_int,
+                            colors::PURPLE,
                         );
                         if is_host {
                             let start_game = button::start_game(screen_height, screen_width);
@@ -255,7 +262,6 @@ extern "C" fn main() {
                                 network.launch_game().unwrap();
                             }
                         }
-                        
                     }
                     network::Status::InGame => {
                         // network.send(data);
