@@ -6,10 +6,10 @@ use plotters::prelude::*;
 #[cfg(debug_assertions)]
 use tqdm::tqdm;
 
-const ACC_RATE: f64 = 1.;
+const ACC_RATE: f64 = 20.;
 const DECC_RATE: f64 = -1.2;
 const SPEED_EXCESS: f64 = 0.3;
-const FRICTION: f64 = 0.1;
+const FRICTION: f64 = 2.;
 const DT: f64 = 1. / 60. * 1.;
 
 /// The game structure. `Game.map` is the continuous sequence of bezier curves forming the curcuit and `Game.cars` is the list of cars present on the circuit.
@@ -58,7 +58,7 @@ impl Game {
             old_height = new_size.1;
         });
         let mut return_side = Vec::new();
-        let eps = 1e-1;
+        let eps = 5.;
         let mut curr_width = 0.;
         // io_points[i] = (input_point, output_point)
         let mut io_points = Vec::new();
@@ -171,22 +171,27 @@ impl Game {
 
     pub fn update_position(&mut self, car_idx: usize, accelerate: bool) {
         // Random bullshit, GO! v(t+dt) = (a-f*v(t))*dt
-        // self.cars[car_idx].speed = (((if accelerate { ACC_RATE } else { DECC_RATE })
-        //    - FRICTION * self.cars[car_idx].speed /* self.cars[car_idx].speed*/)
-        //    * DT).abs();
+        self.cars[car_idx].speed += ((if accelerate { ACC_RATE } else { 0. })
+           - FRICTION * self.cars[car_idx].speed /* self.cars[car_idx].speed*/)
+           * DT;
 
         //self.cars[car_idx].speed += ((if accelerate { ACC_RATE }  else { 0. })  * DT);
 
-        self.cars[car_idx].speed = 0.01;
+        // self.cars[car_idx].speed = 10.;
+        let mut new_t = self.cars[car_idx].t;
+        let mut new_curve =
+                self.cars[car_idx].curve_index;
 
-        let grad = self.map[self.cars[car_idx].curve_index].compute_grad(self.cars[car_idx].t);
-        // The distance traveled will be total_distance/||grad|| in order to keep a constant speed accross the curve
-        let mut new_t = self.cars[car_idx].speed /*/ grad.l2_norm()*/+ self.cars[car_idx].t;
-        let new_curve =
-            (self.cars[car_idx].curve_index + ((new_t > 1.) as usize)) % self.map.len();
-
-        if new_t > 1. {
-            new_t -= 1.;
+        for _ in 0..100 {
+            let grad = self.map[new_curve].compute_grad(new_t);
+            // The distance traveled will be total_distance/||grad|| in order to keep a constant speed accross the curve
+            new_t += self.cars[car_idx].speed / 100. / grad.l2_norm();
+            new_curve =
+                (new_curve + ((new_t > 1.) as usize)) % self.map.len();
+    
+            if new_t > 1. {
+                new_t = 0.;
+            }
         }
 
         // let norm = grad.l2_norm();
@@ -207,7 +212,7 @@ impl Game {
         self.cars[car_idx].curve_index = new_curve;
         self.cars[car_idx].t = new_t;
 
-        println!("{} {} {}", new_curve, new_t, self.map.len());
+        // println!("{} {}", new_curve, new_t);
 
         // If the speed is too high for the curve, leave the road. Else, keep going.
         // if self.map[new_curve]

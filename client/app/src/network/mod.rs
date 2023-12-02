@@ -100,7 +100,7 @@ impl Network {
         window_height: u32,
         window_width: u32,
     ) -> Result<Self, Error> {
-        match TcpStream::connect("10.0.2.2:8888") {
+        match TcpStream::connect("10.192.136.11:8888") {
             Ok(stream) => {
                 stream.set_nonblocking(true)?;
                 let mut network = Network {

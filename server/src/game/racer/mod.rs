@@ -54,6 +54,7 @@ fn send_data(players: &mut [player::Player], game: &game::Game) {
         player.send(raw_data.as_slice()).err();
     }
 }
+
 fn recv_data(players: &mut [player::Player]) -> Vec<bool> {
     // when called, we can expect that the buffer received is a boolean, corresponding to having clicked or not
     let mut phone_accel = vec![false; players.len()];
@@ -71,9 +72,6 @@ fn recv_data(players: &mut [player::Player]) -> Vec<bool> {
             }
         }
         phone_accel[i_p] = is_accelerating;
-        if is_accelerating {
-            println!("COUSCOUS");
-        }
     }
     phone_accel
 }
@@ -86,7 +84,6 @@ pub fn racer(players: &mut [player::Player]) -> Result<(), std::io::Error> {
     let mut game = match game::Game::new(vec![], players.len(), &dimensions) {
         Ok(game) => game,
         Err(err) => {
-            println!("{:?}", err);
             panic!("{:?}", err);           
         },
     };
@@ -97,7 +94,7 @@ pub fn racer(players: &mut [player::Player]) -> Result<(), std::io::Error> {
         for (i_p, _) in players.iter().enumerate() {
             game.update_position(i_p, phone_accel[i_p]);
         }
-        thread::sleep(time::Duration::from_millis(10));
+        thread::sleep(time::Duration::from_millis(20));
     }
     Ok(())
 }

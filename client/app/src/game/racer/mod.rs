@@ -353,9 +353,5 @@ pub unsafe fn main_game(network: &mut network::Network) {
             draw_bez(&buffer_bezier);
         });
         send_data(network);
-        raylib::TraceLog(
-            raylib::TraceLogLevel_LOG_ERROR.try_into().unwrap(),
-            raylib::raylib_str!(format!("Cars : {:?}\n Bezier : {:?}", buffer_cars, buffer_bezier)),
-        );
     }
 }

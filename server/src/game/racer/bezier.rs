@@ -190,7 +190,7 @@ impl Bezier {
     /// The pairs (ok, ik+1) correspond to temp curves that are used to generate smooth transitions between two curves by enforcing their control point to be the symmetry of the surronding curves.
     ///
     pub fn random_map(dimensions: &Vec<(f64, f64)>, io_points: Data) -> Vec<Self> {
-        let mut rng = rand::rngs::StdRng::seed_from_u64(42);
+        let mut rng = rand::rngs::StdRng::seed_from_u64(41);
 
         let (_total_width, total_height) =
             dimensions
@@ -219,8 +219,8 @@ impl Bezier {
                     control_2.0 *= 0.5;
                 } else if *phone_idx == len {
                     // Make the car spend more time on last phone x = (b-a) + x*a/b
-                    control_1.0 = 0.5 * (control_1.0 + dimensions[*phone_idx].0);
-                    control_2.0 = 0.5 * (control_2.0 + dimensions[*phone_idx].0);
+                    control_1.0 = 0.5 * (control_1.0 + 1.);
+                    control_2.0 = 0.5 * (control_2.0 + 1.);
                 }
 
                 // Add offset to control points
