@@ -13,7 +13,6 @@ use std::vec;
 ///
 ///
 //////////////////////////////////////////////
-
 mod bullet;
 mod maze;
 mod powerup;
@@ -143,8 +142,7 @@ pub fn maze_fight(players: &mut [network::player::Player]) -> Result<(), Error> 
     }
 
     let mut players_system = vec::Vec::new();
-    let mut i = 0;
-    for p in players.iter_mut() {
+    for (i, p) in players.iter_mut().enumerate() {
         let packed_maze = maze::pack_maze(p, &maze);
         p.send(&packed_maze)?;
         players_system.push(LocalPlayer {
@@ -160,7 +158,6 @@ pub fn maze_fight(players: &mut [network::player::Player]) -> Result<(), Error> 
             modifiers: vec::Vec::new(),
             life: 10,
         });
-        i += 1;
     }
 
     let mut bullets = vec::Vec::new();
@@ -212,14 +209,17 @@ pub fn maze_fight(players: &mut [network::player::Player]) -> Result<(), Error> 
     }
 }
 
-fn update_player_status(p: &mut LocalPlayer, maze: &[maze::Wall], bullets: &mut Vec<bullet::Bullet>, internal_timer: time::Instant) {
+fn update_player_status(
+    p: &mut LocalPlayer,
+    maze: &[maze::Wall],
+    bullets: &mut Vec<bullet::Bullet>,
+    internal_timer: time::Instant,
+) {
     if !p.is_dead {
         let mut size_modifiers = SPRITE_SIZE as f32;
         let mut firing_speed_modifiers = weapon::FIRERING_SPEED as f32;
         for m in p.modifiers.iter() {
-            if m.get_type() == powerup::Type::SizeUp
-                || m.get_type() == powerup::Type::SizeDown
-            {
+            if m.get_type() == powerup::Type::SizeUp || m.get_type() == powerup::Type::SizeDown {
                 size_modifiers += m.modifier();
             }
             if m.get_type() == powerup::Type::FiringRateDown
@@ -263,7 +263,11 @@ fn update_player_status(p: &mut LocalPlayer, maze: &[maze::Wall], bullets: &mut 
     }
 }
 
-fn update_bullet_status(bullets: &mut Vec<bullet::Bullet>, maze: &[maze::Wall], internal_timer: time::Instant) {
+fn update_bullet_status(
+    bullets: &mut Vec<bullet::Bullet>,
+    maze: &[maze::Wall],
+    internal_timer: time::Instant,
+) {
     let mut i = 0;
     while i < bullets.len() {
         let b = &mut bullets[i];
@@ -284,7 +288,11 @@ fn update_bullet_status(bullets: &mut Vec<bullet::Bullet>, maze: &[maze::Wall], 
     }
 }
 
-fn update_dead_status(p: &mut LocalPlayer, bullets: &mut Vec<bullet::Bullet>, powerups: &mut Vec<powerup::PowerUp>) {
+fn update_dead_status(
+    p: &mut LocalPlayer,
+    bullets: &mut Vec<bullet::Bullet>,
+    powerups: &mut Vec<powerup::PowerUp>,
+) {
     if !p.is_dead {
         let mut i = 0;
         while i < bullets.len() {
