@@ -5,27 +5,13 @@ pub const POWERUP_COUNT: usize = 6;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Type {
-    SpeedUp,
-    SpeedDown,
-    SizeUp,
-    SizeDown,
-    FiringRateUp,
-    FiringRateDown,
-    Unknown,
-}
-
-impl From<Type> for usize {
-    fn from(value: Type) -> Self {
-        match value {
-            Type::SpeedUp => 1,
-            Type::SpeedDown => 2,
-            Type::SizeUp => 3,
-            Type::SizeDown => 4,
-            Type::FiringRateUp => 5,
-            Type::FiringRateDown => 6,
-            Type::Unknown => 0xffff,
-        }
-    }
+    SpeedUp = 1,
+    SpeedDown = 2,
+    SizeUp = 3,
+    SizeDown = 4,
+    FiringRateUp = 5,
+    FiringRateDown = 6,
+    Unknown = 0xffff,
 }
 
 impl From<usize> for Type {

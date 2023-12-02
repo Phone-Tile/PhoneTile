@@ -13,6 +13,7 @@ use std::vec;
 ///
 ///
 //////////////////////////////////////////////
+
 mod bullet;
 mod maze;
 mod powerup;
@@ -186,126 +187,19 @@ pub fn maze_fight(players: &mut [network::player::Player]) -> Result<(), Error> 
     }
 
     loop {
-        // update player status
         for p in players_system.iter_mut() {
-            if !p.is_dead {
-                let mut size_modifiers = SPRITE_SIZE as f32;
-                let mut firing_speed_modifiers = weapon::FIRERING_SPEED as f32;
-                for m in p.modifiers.iter() {
-                    if m.get_type() == powerup::Type::SizeUp
-                        || m.get_type() == powerup::Type::SizeDown
-                    {
-                        size_modifiers += m.modifier();
-                    }
-                    if m.get_type() == powerup::Type::FiringRateDown
-                        || m.get_type() == powerup::Type::FiringRateUp
-                    {
-                        firing_speed_modifiers += m.modifier();
-                    }
-                }
-                let mut norm = p.speed.x * p.speed.x + p.speed.y * p.speed.y;
-                norm = norm.sqrt();
-                if p.timer.elapsed().as_millis() > firing_speed_modifiers as u128 && norm > 0. {
-                    p.timer = std::time::Instant::now();
-                    bullets.push(bullet::Bullet::new(
-                        Vector2 {
-                            x: p.pos.x + size_modifiers / 2.,
-                            y: p.pos.y + size_modifiers / 2.,
-                        },
-                        Vector2 {
-                            x: bullet::BULLET_SPEED * p.speed.x / norm,
-                            y: bullet::BULLET_SPEED * p.speed.y / norm,
-                        },
-                        p.id,
-                    ));
-                }
-
-                p.pos.x += p.speed.x * internal_timer.elapsed().as_secs_f32() * 50.;
-                p.pos.y += p.speed.y * internal_timer.elapsed().as_secs_f32() * 50.;
-
-                for w in maze.iter() {
-                    w.realign_sprite(&mut p.pos, size_modifiers as usize);
-                }
-
-                let mut i = 0;
-                while i < p.modifiers.len() {
-                    if !p.modifiers[i].is_activated() {
-                        p.modifiers.swap_remove(i);
-                    } else {
-                        i += 1;
-                    }
-                }
-            }
+            update_player_status(p, &maze, &mut bullets, internal_timer);
         }
 
-        // update bullet status
-        i = 0;
-        while i < bullets.len() {
-            let b = &mut bullets[i];
-            b.pos.x += b.dir.x * internal_timer.elapsed().as_secs_f32() * 50.;
-            b.pos.y += b.dir.y * internal_timer.elapsed().as_secs_f32() * 50.;
-            if b.pos.x < 0. || b.pos.y < 0. || b.pos.x > 5000. || b.pos.y > 5000. {
-                bullets.swap_remove(i);
-            } else {
-                i += 1;
-                for w in maze.iter() {
-                    if w.intersect(&mut b.pos, BULLET_SIZE) {
-                        i -= 1;
-                        bullets.swap_remove(i);
-                        break;
-                    }
-                }
-            }
-        }
+        update_bullet_status(&mut bullets, &maze, internal_timer);
 
-        // update dead status
         for p in players_system.iter_mut() {
-            if !p.is_dead {
-                let mut i = 0;
-                while i < bullets.len() {
-                    let b = &bullets[i];
-                    if b.id != p.id
-                        && b.pos.x > p.pos.x
-                        && b.pos.x < p.pos.x + SPRITE_SIZE as f32
-                        && b.pos.y > p.pos.y
-                        && b.pos.y < p.pos.y + SPRITE_SIZE as f32
-                    {
-                        p.life -= 1;
-                        if p.life == 0 {
-                            p.is_dead = true;
-                        }
-                        bullets.remove(i);
-                    } else {
-                        i += 1;
-                    }
-                }
-                i = 0;
-                while i < powerups.len() {
-                    let powerup = &mut powerups[i];
-                    if powerup.pos().x > p.pos.x
-                        && powerup.pos().x < p.pos.x + SPRITE_SIZE as f32
-                        && powerup.pos().y > p.pos.y
-                        && powerup.pos().y < p.pos.y + SPRITE_SIZE as f32
-                    {
-                        powerup.activate();
-                        p.modifiers.push(*powerup);
-
-                        powerups.swap_remove(i);
-                    } else {
-                        i += 1;
-                    }
-                }
-            }
+            update_dead_status(p, &mut bullets, &mut powerups);
         }
 
-        // generate new modifiers
         if last_modifier_gen.elapsed().as_secs() > 5 {
             last_modifier_gen = time::Instant::now();
-            let x: f32 = rand::random::<f32>() * width;
-            let y: f32 = rand::random::<f32>() * height;
-            let powerup = (rand::random::<f32>() * powerup::POWERUP_COUNT as f32) as usize;
-
-            powerups.push(powerup::PowerUp::new(powerup.into(), Vector2 { x, y }));
+            generate_new_modifiers(&mut powerups, width, height);
         }
 
         internal_timer = time::Instant::now();
@@ -316,6 +210,125 @@ pub fn maze_fight(players: &mut [network::player::Player]) -> Result<(), Error> 
         }
         thread::sleep(time::Duration::from_millis(10));
     }
+}
+
+fn update_player_status(p: &mut LocalPlayer, maze: &[maze::Wall], bullets: &mut Vec<bullet::Bullet>, internal_timer: time::Instant) {
+    if !p.is_dead {
+        let mut size_modifiers = SPRITE_SIZE as f32;
+        let mut firing_speed_modifiers = weapon::FIRERING_SPEED as f32;
+        for m in p.modifiers.iter() {
+            if m.get_type() == powerup::Type::SizeUp
+                || m.get_type() == powerup::Type::SizeDown
+            {
+                size_modifiers += m.modifier();
+            }
+            if m.get_type() == powerup::Type::FiringRateDown
+                || m.get_type() == powerup::Type::FiringRateUp
+            {
+                firing_speed_modifiers += m.modifier();
+            }
+        }
+        let mut norm = p.speed.x * p.speed.x + p.speed.y * p.speed.y;
+        norm = norm.sqrt();
+        if p.timer.elapsed().as_millis() > firing_speed_modifiers as u128 && norm > 0. {
+            p.timer = std::time::Instant::now();
+            bullets.push(bullet::Bullet::new(
+                Vector2 {
+                    x: p.pos.x + size_modifiers / 2.,
+                    y: p.pos.y + size_modifiers / 2.,
+                },
+                Vector2 {
+                    x: bullet::BULLET_SPEED * p.speed.x / norm,
+                    y: bullet::BULLET_SPEED * p.speed.y / norm,
+                },
+                p.id,
+            ));
+        }
+
+        p.pos.x += p.speed.x * internal_timer.elapsed().as_secs_f32() * 50.;
+        p.pos.y += p.speed.y * internal_timer.elapsed().as_secs_f32() * 50.;
+
+        for w in maze.iter() {
+            w.realign_sprite(&mut p.pos, size_modifiers as usize);
+        }
+
+        let mut i = 0;
+        while i < p.modifiers.len() {
+            if !p.modifiers[i].is_activated() {
+                p.modifiers.swap_remove(i);
+            } else {
+                i += 1;
+            }
+        }
+    }
+}
+
+fn update_bullet_status(bullets: &mut Vec<bullet::Bullet>, maze: &[maze::Wall], internal_timer: time::Instant) {
+    let mut i = 0;
+    while i < bullets.len() {
+        let b = &mut bullets[i];
+        b.pos.x += b.dir.x * internal_timer.elapsed().as_secs_f32() * 50.;
+        b.pos.y += b.dir.y * internal_timer.elapsed().as_secs_f32() * 50.;
+        if b.pos.x < 0. || b.pos.y < 0. || b.pos.x > 5000. || b.pos.y > 5000. {
+            bullets.swap_remove(i);
+        } else {
+            i += 1;
+            for w in maze.iter() {
+                if w.intersect(&mut b.pos, BULLET_SIZE) {
+                    i -= 1;
+                    bullets.swap_remove(i);
+                    break;
+                }
+            }
+        }
+    }
+}
+
+fn update_dead_status(p: &mut LocalPlayer, bullets: &mut Vec<bullet::Bullet>, powerups: &mut Vec<powerup::PowerUp>) {
+    if !p.is_dead {
+        let mut i = 0;
+        while i < bullets.len() {
+            let b = &bullets[i];
+            if b.id != p.id
+                && b.pos.x > p.pos.x
+                && b.pos.x < p.pos.x + SPRITE_SIZE as f32
+                && b.pos.y > p.pos.y
+                && b.pos.y < p.pos.y + SPRITE_SIZE as f32
+            {
+                p.life -= 1;
+                if p.life == 0 {
+                    p.is_dead = true;
+                }
+                bullets.remove(i);
+            } else {
+                i += 1;
+            }
+        }
+        i = 0;
+        while i < powerups.len() {
+            let powerup = &mut powerups[i];
+            if powerup.pos().x > p.pos.x
+                && powerup.pos().x < p.pos.x + SPRITE_SIZE as f32
+                && powerup.pos().y > p.pos.y
+                && powerup.pos().y < p.pos.y + SPRITE_SIZE as f32
+            {
+                powerup.activate();
+                p.modifiers.push(*powerup);
+
+                powerups.swap_remove(i);
+            } else {
+                i += 1;
+            }
+        }
+    }
+}
+
+fn generate_new_modifiers(powerups: &mut Vec<powerup::PowerUp>, width: f32, height: f32) {
+    let x: f32 = rand::random::<f32>() * width;
+    let y: f32 = rand::random::<f32>() * height;
+    let powerup = (rand::random::<f32>() * powerup::POWERUP_COUNT as f32) as usize;
+
+    powerups.push(powerup::PowerUp::new(powerup.into(), Vector2 { x, y }));
 }
 
 fn send_game_data(

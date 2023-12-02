@@ -85,11 +85,6 @@ impl Wall {
         normal.x /= norm;
         normal.y /= norm;
 
-        // if (self.check_might_intersect_along_axe(sprite, col) && self.check_might_intersect_along_axe(sprite,normal)) {
-        //     self.correct_allong_axe(sprite, col);
-        //     self.correct_allong_axe(sprite, normal);
-        // }
-
         let realign1 = self.correct_allong_axe(sprite, col, size);
         let realign2 = self.correct_allong_axe(sprite, normal, size);
         if realign1.abs() > realign2.abs() {
@@ -129,11 +124,6 @@ impl Wall {
 
         normal.x /= norm;
         normal.y /= norm;
-
-        // if (self.check_might_intersect_along_axe(sprite, col) && self.check_might_intersect_along_axe(sprite,normal)) {
-        //     self.correct_allong_axe(sprite, col);
-        //     self.correct_allong_axe(sprite, normal);
-        // }
 
         let realign1 = self.correct_allong_axe(sprite, col, size);
         let realign2 = self.correct_allong_axe(sprite, normal, size);
