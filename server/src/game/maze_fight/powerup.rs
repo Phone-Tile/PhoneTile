@@ -35,8 +35,8 @@ impl Type {
             Type::SpeedDown => -3.,
             Type::SizeUp => 30.,
             Type::SizeDown => -30.,
-            Type::FiringRateUp => -5.,
-            Type::FiringRateDown => 5.,
+            Type::FiringRateUp => -50.,
+            Type::FiringRateDown => 50.,
             Type::Unknown => 0.,
         }
     }

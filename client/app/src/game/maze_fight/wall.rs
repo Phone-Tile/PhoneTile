@@ -1,9 +1,18 @@
-use super::Vector2;
-use crate::network::player;
-use rand;
+use crate::ui::colors;
+use raylib;
+use std::ffi::{c_float, c_int};
 use std::vec;
+use Vector2;
 
-pub const WALL_LENGTH: usize = 200;
+//////////////////////////////////////////////
+///
+///
+/// Consts
+///
+///
+//////////////////////////////////////////////
+
+const WALL_THICKNESS: c_float = 20.;
 
 //////////////////////////////////////////////
 ///
@@ -15,12 +24,118 @@ pub const WALL_LENGTH: usize = 200;
 
 #[derive(Debug)]
 pub struct Wall {
-    start: Vector2,
-    end: Vector2,
+    pub start: raylib::Vector2,
+    pub end: raylib::Vector2,
+    pub color: raylib::Color,
 }
 
 impl Wall {
-    pub fn realign_sprite(&self, sprite: &mut Vector2, width: usize, height: usize) {
+    //////////////////////////////////////////////
+    ///
+    ///
+    /// Maze unpacking
+    ///
+    ///
+    //////////////////////////////////////////////
+
+    pub fn unpack_maze(_data: &[u8]) -> Vec<Wall> {
+        let mut buffer = [0_u8; 2];
+        buffer.copy_from_slice(&_data[..2]);
+        let n = u16::from_be_bytes(buffer) as usize;
+        let data = &_data[2..];
+        let mut res = vec::Vec::new();
+        for i in 0..n {
+            let mut buffer = [0_u8; 4];
+
+            buffer.copy_from_slice(&data[i * 16..i * 16 + 4]);
+            let start_x = f32::from_be_bytes(buffer);
+            buffer.copy_from_slice(&data[i * 16 + 4..i * 16 + 8]);
+            let start_y = f32::from_be_bytes(buffer);
+            buffer.copy_from_slice(&data[i * 16 + 8..i * 16 + 12]);
+            let end_x = f32::from_be_bytes(buffer);
+            buffer.copy_from_slice(&data[i * 16 + 12..i * 16 + 16]);
+            let end_y = f32::from_be_bytes(buffer);
+            res.push(Wall {
+                start: Vector2 {
+                    x: start_x,
+                    y: start_y,
+                },
+                end: Vector2 { x: end_x, y: end_y },
+                color: colors::BLACK,
+            });
+        }
+        res
+    }
+
+    //////////////////////////////////////////////
+    ///
+    ///
+    /// Drawing
+    ///
+    ///
+    //////////////////////////////////////////////
+
+    pub unsafe fn draw(&self, tex_wall: raylib::Texture) {
+        if self.start.x == self.end.x {
+            raylib::DrawTexturePro(
+                tex_wall,
+                raylib::Rectangle {
+                    x: 0.,
+                    y: 0.,
+                    width: 600.,
+                    height: 600.,
+                },
+                raylib::Rectangle {
+                    x: self.start.x - WALL_THICKNESS / 2.,
+                    y: self.start.y,
+                    width: WALL_THICKNESS,
+                    height: self.end.y - self.start.y,
+                },
+                Vector2 { x: 0., y: 0. },
+                0.,
+                raylib::Color {
+                    r: 255,
+                    g: 255,
+                    b: 255,
+                    a: 255,
+                },
+            );
+        } else {
+            raylib::DrawTexturePro(
+                tex_wall,
+                raylib::Rectangle {
+                    x: 0.,
+                    y: 0.,
+                    width: 600.,
+                    height: 600.,
+                },
+                raylib::Rectangle {
+                    x: self.start.x,
+                    y: self.start.y - WALL_THICKNESS / 2.,
+                    width: self.end.x - self.start.x,
+                    height: WALL_THICKNESS,
+                },
+                Vector2 { x: 0., y: 0. },
+                0.,
+                raylib::Color {
+                    r: 255,
+                    g: 255,
+                    b: 255,
+                    a: 255,
+                },
+            );
+        }
+    }
+
+    //////////////////////////////////////////////
+    ///
+    ///
+    /// Physics
+    ///
+    ///
+    //////////////////////////////////////////////
+
+    pub fn realign_sprite(&self, sprite: &mut Vector2, width: c_int, height: c_int) {
         // first check if this is pertinent to check for colisions
         let mut col = Vector2 {
             x: self.end.x - self.start.x,
@@ -60,7 +175,7 @@ impl Wall {
         }
     }
 
-    pub fn intersect(&self, sprite: &mut Vector2, width: usize, height: usize) -> bool {
+    pub fn intersect(&self, sprite: &mut Vector2, width: c_int, height: c_int) -> bool {
         // first check if this is pertinent to check for colisions
         let mut col = Vector2 {
             x: self.end.x - self.start.x,
@@ -98,8 +213,8 @@ impl Wall {
         &self,
         sprite: &mut Vector2,
         axe: &Vector2,
-        width: usize,
-        height: usize,
+        width: c_int,
+        height: c_int,
     ) -> f32 {
         // project the cube
         let proj1 = axe.x * sprite.x + axe.y * sprite.y;
@@ -143,87 +258,4 @@ impl Wall {
             x
         }
     }
-}
-
-//////////////////////////////////////////////
-///
-///
-/// Maze generator
-///
-///
-//////////////////////////////////////////////
-
-pub fn gen_walls(players: &mut [player::Player]) -> Vec<Wall> {
-    // for now build a map of the width the sum of width and heigh max(height)
-    let mut width = 0.;
-    let mut height = 0.;
-    for p in players.iter() {
-        width += p.physical_width;
-        height = p.physical_height.max(height);
-    }
-
-    let size = WALL_LENGTH;
-    let mut res = vec::Vec::new();
-
-    for i in 0..(width as usize / size) {
-        for j in 0..(height as usize / size) {
-            let seed: f32 = rand::random();
-            if seed < 0.35 {
-                res.push(Wall {
-                    start: Vector2 {
-                        x: (i * size) as f32,
-                        y: (j * size) as f32,
-                    },
-                    end: Vector2 {
-                        x: ((i + 1) * size) as f32,
-                        y: ((j) * size) as f32,
-                    },
-                });
-            }
-            if seed > 0.65 {
-                res.push(Wall {
-                    start: Vector2 {
-                        x: (i * size) as f32,
-                        y: (j * size) as f32,
-                    },
-                    end: Vector2 {
-                        x: ((i) * size) as f32,
-                        y: ((j + 1) * size) as f32,
-                    },
-                });
-            }
-        }
-    }
-    res
-}
-
-//////////////////////////////////////////////
-///
-///
-/// Maze packer for send
-///
-///
-//////////////////////////////////////////////
-
-pub fn pack_maze(p: &mut crate::network::player::Player, maze: &Vec<Wall>) -> Vec<u8> {
-    let mut res = vec::Vec::new();
-    let tmp2 = (maze.len() as u16).to_be_bytes();
-    res.append(&mut tmp2.to_vec());
-
-    for w in maze.iter() {
-        let (_start_x, _start_y) = p.to_local_coordinates(w.start.x, w.start.y);
-        let (_end_x, _end_y) = p.to_local_coordinates(w.end.x, w.end.y);
-
-        let start_x = _start_x.to_be_bytes();
-        let start_y = _start_y.to_be_bytes();
-        let end_x = _end_x.to_be_bytes();
-        let end_y = _end_y.to_be_bytes();
-
-        res.append(&mut start_x.to_vec());
-        res.append(&mut start_y.to_vec());
-        res.append(&mut end_x.to_vec());
-        res.append(&mut end_y.to_vec());
-    }
-
-    res
 }

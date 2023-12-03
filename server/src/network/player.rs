@@ -74,8 +74,12 @@ impl Player {
         (res_x, res_y)
     }
 
-    pub fn to_local_proportion(&self, x: f32) -> f32 {
+    pub fn to_local_proportion_vertical(&self, x: f32) -> f32 {
         x * self.window_height as f32 / self.physical_height
+    }
+
+    pub fn to_local_proportion_horizontal(&self, x: f32) -> f32 {
+        x * self.window_width as f32 / self.physical_width
     }
 
     /// Convert screen coordinates to physical coordinates, not usefull yet so big ratio

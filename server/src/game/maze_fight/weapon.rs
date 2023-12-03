@@ -1,1 +1,1 @@
-pub const FIRERING_SPEED: u128 = 200;
+pub const FIRERING_SPEED: u128 = 400;
