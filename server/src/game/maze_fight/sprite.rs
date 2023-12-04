@@ -35,7 +35,7 @@ impl Sprite {
                 speed: Vector2 { x: 0., y: 0. },
                 id: p.rank as usize,
                 timer: time::Instant::now(),
-                skin: i + 3,
+                skin: i,
                 is_dead: false,
                 modifiers: vec::Vec::new(),
                 life: 10,
