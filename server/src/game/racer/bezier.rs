@@ -120,7 +120,7 @@ macro_rules! left_scalar_mul_impl(
 
 left_scalar_mul_impl!(u8, u16, u32, i8, i16, i32, f32, f64);
 
-pub type Data = Vec<((f64, f64), (f64, f64), usize, bool)>;
+pub type Data = Vec<((f64, f64), (f64, f64), usize)>;
 
 /// The points of the gradient of a Bezier curve. `Gradient(A,B,C)` represents the function At^2 + Bt + C that can be computed via the method `gradient.at_time(t)`
 #[derive(Clone, Debug, Default)]
@@ -200,7 +200,7 @@ impl Bezier {
                 });
 
         let len = dimensions.len() - 1;
-        let eps = 1e-1;
+        let eps = 10.;
 
         let mut opt_bez_curves = vec![None; io_points.len()];
         let mut widths = Vec::new();
@@ -209,85 +209,72 @@ impl Bezier {
             old_width + new_size.0
         });
 
-        for (i, (input, output, phone_idx, is_link)) in io_points.iter().enumerate() {
-            if !is_link {
-                let mut control_1 = rng.gen::<(f64, f64)>();
-                let mut control_2 = rng.gen::<(f64, f64)>();
-                if *phone_idx == 0 {
-                    // Make the car spend more time on first phone
-                    control_1.0 *= 0.5;
-                    control_2.0 *= 0.5;
-                } else if *phone_idx == len {
-                    // Make the car spend more time on last phone x = (b-a) + x*a/b
-                    control_1.0 = 0.5 * (control_1.0 + 1.);
-                    control_2.0 = 0.5 * (control_2.0 + 1.);
-                }
-
-                // Add offset to control points
-                let offset = (total_height - dimensions[*phone_idx].1) / 2.;
-                let mut control_1_1;
-                let mut control_1_2;
-                let mut control_2_1;
-                let mut control_2_2;
-                if input.1 > dimensions[*phone_idx].1 / 2. + offset {
-                    control_1_1 = control_1.0 * (dimensions[*phone_idx].0 - 2. * eps)
-                        + widths[*phone_idx]
-                        + eps;
-                    control_1_2 = control_1.1 * dimensions[*phone_idx].1 / 2.
-                        + offset
-                        + dimensions[*phone_idx].1 / 2.;
-                } else {
-                    control_1_1 = control_1.0 * (dimensions[*phone_idx].0 - 2. * eps)
-                        + widths[*phone_idx]
-                        + eps;
-                    control_1_2 = control_1.1 * dimensions[*phone_idx].1 / 2. + offset;
-                }
-                if output.1 > dimensions[*phone_idx].1 / 2. + offset {
-                    control_2_1 = control_2.0 * (dimensions[*phone_idx].0 - 2. * eps)
-                        + widths[*phone_idx]
-                        + eps;
-                    control_2_2 = control_2.1 * dimensions[*phone_idx].1 / 2.
-                        + offset
-                        + dimensions[*phone_idx].1 / 2.;
-                } else {
-                    control_2_1 = control_2.0 * (dimensions[*phone_idx].0 - 2. * eps)
-                        + widths[*phone_idx]
-                        + eps;
-                    control_2_2 = control_2.1 * dimensions[*phone_idx].1 / 2. + offset;
-                }
-
-                opt_bez_curves[i] = Some(Bezier::new_tuple(
-                    *input,
-                    (control_1_1, control_1_2),
-                    (control_2_1, control_2_2),
-                    *output,
-                ));
+        let mut control_last_right = rng.gen::<(f64, f64)>();
+        for (i, (input, output, phone_idx)) in io_points.iter().enumerate() {
+            let mut control_1 = rng.gen::<(f64, f64)>();
+            let mut control_2 = rng.gen::<(f64, f64)>();
+            if *phone_idx == 0 {
+                // Make the car spend more time on first phone
+                control_1 = control_last_right;
+                control_2.0 *= 0.5;
+            } else if *phone_idx == len {
+                // Make the car spend more time on last phone x = (b-a) + x*a/b
+                control_1.0 = 0.5 * (control_1.0 + 1.);
+                control_2.0 = 0.5 * (control_2.0 + 1.);
+            } else if i == len {
+                // no random for the last control point in order to loop
+                control_2 = control_last_right;
             }
-        }
-
-        for (i, (input, output, phone_idx, is_link)) in io_points.iter().enumerate() {
-            if *is_link {
-                let previous_curve = opt_bez_curves[i - 1].as_ref().unwrap();
-                let next_curve = if i == opt_bez_curves.len() - 1 {
-                    opt_bez_curves[0].as_ref().unwrap()
-                } else {
-                    opt_bez_curves[i + 1].as_ref().unwrap()
-                };
-                let in_control_point = previous_curve.get_points().2;
-                let out_control_point = next_curve.get_points().1;
-                let input_p = Point::from(*input);
-                let output_p = Point::from(*output);
-                let mut control1 = input_p.symmetry(in_control_point);
-                control1 = (control1 - input_p).pseudo_normalised() * eps + input_p;
-                let mut control2 = output_p.symmetry(out_control_point);
-                control2 = (control2 - output_p).pseudo_normalised() * eps + output_p;
-                opt_bez_curves[i] = Some(Bezier::new_tuple(
-                    *input,
-                    control1.into_tuple(),
-                    control2.into_tuple(),
-                    *output,
-                ));
+            // Add offset to control points
+            let offset = (total_height - dimensions[*phone_idx].1) / 2.;
+            let mut control_1_1;
+            let mut control_1_2;
+            let mut control_2_1;
+            let mut control_2_2;
+            if *phone_idx == 0 {
+                let offset_1 = (total_height - dimensions[1].1) / 2.;
+                control_1_1 = control_1.0 * dimensions[1].0 
+                    + widths[1]
+                    + eps;
+                control_1_2 = control_1.1 * dimensions[1].1 / 2.
+                    + offset_1
+                    + dimensions[1].1 / 2.;
+                (control_1_1, control_1_2) = Point::from((control_1_1, control_1_2)).symmetry(Point::from(*input)).into_tuple()
+            } else if input.1 > dimensions[*phone_idx].1 / 2. + offset {
+                control_1_1 = control_1.0 * dimensions[*phone_idx].0 
+                    + widths[*phone_idx]
+                    + eps;
+                control_1_2 = control_1.1 * dimensions[*phone_idx].1 / 2.
+                    + offset
+                    + dimensions[*phone_idx].1 / 2.;
+            } else {
+                control_1_1 = control_1.0 * (dimensions[*phone_idx].0 - 2. * eps)
+                    + widths[*phone_idx]
+                    + eps;
+                control_1_2 = control_1.1 * dimensions[*phone_idx].1 / 2. + offset;
             }
+            if output.1 > dimensions[*phone_idx].1 / 2. + offset {
+                control_2_1 = control_2.0 * (dimensions[*phone_idx].0 - 2. * eps)
+                    + widths[*phone_idx]
+                    + eps;
+                control_2_2 = control_2.1 * dimensions[*phone_idx].1 / 2.
+                    + offset
+                    + dimensions[*phone_idx].1 / 2.;
+            } else {
+                control_2_1 = control_2.0 * (dimensions[*phone_idx].0 - 2. * eps)
+                    + widths[*phone_idx]
+                    + eps;
+                control_2_2 = control_2.1 * dimensions[*phone_idx].1 / 2. + offset;
+            }
+
+            
+
+            opt_bez_curves[i] = Some(Bezier::new(
+                Point::from(*input),
+                Point::from((control_1_1, control_1_2)),
+                Point::from((control_2_1, control_2_2)),
+                Point::from(*output),
+            ));
         }
         let mut bezier_curves = Vec::new();
         opt_bez_curves.iter().for_each(|opt_curve| {

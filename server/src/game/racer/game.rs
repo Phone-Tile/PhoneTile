@@ -41,7 +41,23 @@ impl Game {
     }
 
     /// Generate the points at a third of the minimal height of two consecutive phones to build the Bezier curves. The circuit is build anticlockwise.
-    fn get_io_map(dimensions: &Vec<(f64, f64)>) -> Result<Data, std::io::Error> {
+    ///
+    ///    |¯¯¯¯¯¯¯|         |¯¯¯¯¯¯¯|
+    ///    |       ||¯¯¯¯¯¯¯||       |
+    ///    |     i#||#o   i#||#o     |
+    ///    |     o#||#i   o#||#i     |
+    ///    |       ||___O___||       |
+    ///    |___O___|         |___O___|
+    ///
+    /// Choose the '#' points. The bottom left corner of the frame is (0.,0.), the top right is (max(height), sum(width)).
+    /// #i goes to inputs and #o to outputs. It represents the input and output points for the future Bezier curve.
+    /// Recall that I chose to travel anticlockwise, elsewise invert #i with #o points.
+    /// A #o point should be followed by a #i point, followed then by a #o point.
+    /// Separate each of these points with a width of 2*eps to smooth the Bezier curves.
+    /// `curr_weight` is expected to be equal to the sum of the weights up to the current phone (not included).
+    /// At each phone, we add the connextion between the points #i' and #o' AND the connexion with the previous (#i,#o) pair (i.e. connect #o to #i').
+    ///
+    pub fn get_io_map(dimensions: &Vec<(f64, f64)>) -> Result<Data, std::io::Error> {
         if dimensions.len() < 2 {
             panic!("There must be at least two phones.")
         }
@@ -63,86 +79,42 @@ impl Game {
         // io_points[i] = (input_point, output_point)
         let mut io_points = Vec::new();
         for (i, &curr_height) in min_heights.iter().enumerate() {
-            //
-            //    |¯¯¯¯¯¯¯|         |¯¯¯¯¯¯¯|
-            //    |       ||¯¯¯¯¯¯¯||       |
-            //    |     i#||#o   i#||#o     |
-            //    |     o#||#i   o#||#i     |
-            //    |       ||___O___||       |
-            //    |___O___|         |___O___|
-            //
-            // Choose the '#' points. The bottom left corner of the frame is (0.,0.), the top right is (max(height), sum(width)).
-            // #i goes to inputs and #o to outputs. It represents the input and output points for the future Bezier curve.
-            // Recall that I chose to travel anticlockwise, elsewise invert #i with #o points.
-            // A #o point should be followed by a #i point, followed then by a #o point.
-            // Separate each of these points with a width of 2*eps to smooth the Bezier curves.
-            // `curr_weight` is expected to be equal to the sum of the weights up to the current phone (not included).
-            // At each phone, we add the connextion between the points #i' and #o' AND the connexion with the previous (#i,#o) pair (i.e. connect #o to #i').
-            //
             if i == 0 {
                 let min_height = min_heights[1];
-                let offset = (total_height - min_height) / 2.;
+                let offset = (total_height - min_heights[1]) / 2.;
                 io_points.push((
-                    (dimensions[0].0 - eps, 2. * min_height / 3. + offset),
-                    (dimensions[0].0 - eps, min_height / 3. + offset),
+                    (dimensions[0].0, 2. * min_height / 3. + offset),
+                    (dimensions[0].0, min_height / 3. + offset),
                     i,
-                    false,
                 ));
             } else if i == min_heights.len() - 1 {
                 let offset = (total_height - curr_height) / 2.;
                 // last phone with [bottom, middle, top] segments.
                 io_points.push((
-                    (curr_width - eps, curr_height / 3. + offset),
-                    (curr_width + eps, curr_height / 3. + offset),
+                    (curr_width, curr_height / 3. + offset),
+                    (curr_width, 2. * curr_height / 3. + offset),
                     i,
-                    true,
-                ));
-                io_points.push((
-                    (curr_width + eps, curr_height / 3. + offset),
-                    (curr_width + eps, 2. * curr_height / 3. + offset),
-                    i,
-                    false,
-                ));
-                io_points.push((
-                    (curr_width + eps, 2. * curr_height / 3. + offset),
-                    (curr_width - eps, 2. * curr_height / 3. + offset),
-                    i,
-                    true,
                 ));
             } else {
                 let offset_left = (total_height - curr_height) / 2.;
                 let offset_right = (total_height - min_heights[i + 1]) / 2.;
                 // bottom segment
                 io_points.push((
-                    (curr_width - eps, curr_height / 3. + offset_left),
-                    (curr_width + eps, curr_height / 3. + offset_left),
-                    i,
-                    true,
-                ));
-                io_points.push((
-                    (curr_width + eps, curr_height / 3. + offset_left),
+                    (curr_width, curr_height / 3. + offset_left),
                     (
-                        curr_width + dimensions[i].0 - eps,
+                        curr_width + dimensions[i].0,
                         min_heights[i + 1] / 3. + offset_right,
                     ),
                     i,
-                    false,
                 ));
                 // top segment
                 return_side.push((
-                    (curr_width + eps, 2. * curr_height / 3. + offset_left),
-                    (curr_width - eps, 2. * curr_height / 3. + offset_left),
-                    i,
-                    true,
-                ));
-                return_side.push((
                     (
-                        curr_width + dimensions[i].0 - eps,
+                        curr_width + dimensions[i].0,
                         2. * min_heights[i + 1] / 3. + offset_right,
                     ),
-                    (curr_width + eps, 2. * curr_height / 3. + offset_left),
+                    (curr_width, 2. * curr_height / 3. + offset_left),
                     i,
-                    false,
                 ));
             }
             curr_width += dimensions[i].0;
@@ -175,9 +147,6 @@ impl Game {
            - FRICTION * self.cars[car_idx].speed /* self.cars[car_idx].speed*/)
            * DT;
 
-        //self.cars[car_idx].speed += ((if accelerate { ACC_RATE }  else { 0. })  * DT);
-
-        // self.cars[car_idx].speed = 10.;
         let mut new_t = self.cars[car_idx].t;
         let mut new_curve =
                 self.cars[car_idx].curve_index;
@@ -193,41 +162,9 @@ impl Game {
                 new_t = 0.;
             }
         }
-
-        // let norm = grad.l2_norm();
-
-        // grad.0 *= self.cars[car_idx].speed / grad.l2_norm();
-        // grad.1 *= self.cars[car_idx].speed / grad.l2_norm();
-
-        // if grad.scalar(self.map[new_curve]
-        //     .compute_grad(new_t).normal()).abs() > SPEED_EXCESS {
-        //         self.leave_road(car_idx, grad)
-        //     } else {
-        //         if new_t > 1. {
-        //             self.cars[car_idx].curve_index = new_curve;
-        //         }
-        //         self.cars[car_idx].t = new_t;
-        //     }
-
         self.cars[car_idx].curve_index = new_curve;
         self.cars[car_idx].t = new_t;
 
-        // println!("{} {}", new_curve, new_t);
-
-        // If the speed is too high for the curve, leave the road. Else, keep going.
-        // if self.map[new_curve]
-        //     .compute_grad(new_t)
-        //     .scalar(grad.normal())
-        //     .abs()
-        //     > SPEED_EXCESS
-        // {
-        //     self.leave_road(car_idx, grad)
-        // } else {
-        //     if new_t > 1. {
-        //         self.cars[car_idx].curve_index = new_curve;
-        //     }
-        //     self.cars[car_idx].t = new_t;
-        // }
     }
 
     fn get_pos(&mut self, car_idx: usize) -> Point {
@@ -400,22 +337,18 @@ mod tests {
     #[test]
     fn test_io_map() {
         // Can generate the points as required
-        let phone_size = vec![(1., 1.), (0.3, 0.3), (1., 1.)];
+        let phone_size = vec![(1000., 1000.), (300., 300.), (1000., 1000.)];
         let io_map = Game::get_io_map(&phone_size).unwrap();
-        assert_eq!(io_map.len(), 4 * (phone_size.len() - 1));
+        assert_eq!(io_map.len(), 2 * (phone_size.len() - 1));
         assert!(io_map
             .iter()
             .zip(vec![
-                ((0.9, 0.55), (0.9, 0.45)),
-                ((0.9, 0.45), (1.1, 0.45)),
-                ((1.1, 0.45), (1.2, 0.45)),
-                ((1.2, 0.45), (1.4, 0.45)),
-                ((1.4, 0.45), (1.4, 0.55)),
-                ((1.4, 0.55), (1.2, 0.55)),
-                ((1.2, 0.55), (1.1, 0.55)),
-                ((1.1, 0.55), (0.9, 0.55)),
+                ((1000., 550.), (1000., 450.)),
+                ((1000., 450.), (1300., 450.)),
+                ((1300., 450.), (1300., 550.)),
+                ((1300., 550.), (1000., 550.)),
             ])
-            .all(|(&(f1, f2, _, _), (f3, f4))| (f1.0 - f3.0) < EPSILON
+            .all(|(&(f1, f2, _), (f3, f4))| (f1.0 - f3.0) < EPSILON
                 && (f1.1 - f3.1) < EPSILON
                 && (f2.1 - f4.1) < EPSILON
                 && (f2.0 - f4.0) < EPSILON));
@@ -423,7 +356,7 @@ mod tests {
 
     #[test]
     fn test_random_map_bezier() {
-        let phone_size = vec![(1., 1.), (0.3, 0.3), (1., 1.)];
+        let phone_size = vec![(1000., 1000.), (300., 300.), (1000., 1000.)];
         let game = Game::new(Vec::new(), 1, &phone_size).unwrap();
         let map = game.get_map();
         assert!(map
