@@ -144,27 +144,24 @@ impl Game {
     pub fn update_position(&mut self, car_idx: usize, accelerate: bool) {
         // Random bullshit, GO! v(t+dt) = (a-f*v(t))*dt
         self.cars[car_idx].speed += ((if accelerate { ACC_RATE } else { 0. })
-           - FRICTION * self.cars[car_idx].speed /* self.cars[car_idx].speed*/)
-           * DT;
+            - FRICTION * self.cars[car_idx].speed/* self.cars[car_idx].speed*/)
+            * DT;
 
         let mut new_t = self.cars[car_idx].t;
-        let mut new_curve =
-                self.cars[car_idx].curve_index;
+        let mut new_curve = self.cars[car_idx].curve_index;
 
         for _ in 0..100 {
             let grad = self.map[new_curve].compute_grad(new_t);
             // The distance traveled will be total_distance/||grad|| in order to keep a constant speed accross the curve
             new_t += self.cars[car_idx].speed / 100. / grad.l2_norm();
-            new_curve =
-                (new_curve + ((new_t > 1.) as usize)) % self.map.len();
-    
+            new_curve = (new_curve + ((new_t > 1.) as usize)) % self.map.len();
+
             if new_t > 1. {
                 new_t = 0.;
             }
         }
         self.cars[car_idx].curve_index = new_curve;
         self.cars[car_idx].t = new_t;
-
     }
 
     fn get_pos(&mut self, car_idx: usize) -> Point {

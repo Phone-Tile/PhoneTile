@@ -144,6 +144,7 @@ impl Room {
         // Here we will put the interface code with the client
         match self.game_id {
             client::Game::Racer => crate::game::racer::racer(&mut self.players),
+            client::Game::MazeFight => crate::game::maze_fight::maze_fight(&mut self.players),
             client::Game::Test => test_function(&mut self.players),
             client::Game::Unknown => Ok(()),
         }
@@ -155,10 +156,10 @@ impl Room {
             Ok(_) => self.unlock_game(),
             Err(_) => {
                 self.remove_player(0)?;
-                return Err(Error::new(
+                Err(Error::new(
                     ErrorKind::Interrupted,
                     "master client disconnected",
-                ));
+                ))
             }
         }
     }

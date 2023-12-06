@@ -21,7 +21,6 @@ Cargo.lock
 # VsCode things
 .vscode/*
 # Images
-*.png
 *.gif
 
 *.idsig

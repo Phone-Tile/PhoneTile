@@ -5,7 +5,7 @@ mod vehicle;
 
 use crate::network::packet;
 use crate::network::player;
-use std::{time, thread};
+use std::{thread, time};
 
 fn encode_data(game: &game::Game, player: &player::Player) -> Vec<u8> {
     let mut raw_data: Vec<u8> = Vec::new();
@@ -13,35 +13,39 @@ fn encode_data(game: &game::Game, player: &player::Player) -> Vec<u8> {
     let cars = game.get_cars();
     raw_data.push(8 * 2 * (cars.len() as u8));
     for car in cars.iter() {
-        let (x, y) = player.to_local_coordinates(car.0, car.1);
-        let xb = f64::to_be_bytes(x);
-        let yb = f64::to_be_bytes(y);
+        let (x, y) = player.to_local_coordinates(car.0 as f32, car.1 as f32);
+        let xb = f64::to_be_bytes(x as f64);
+        let yb = f64::to_be_bytes(y as f64);
         raw_data.extend(xb);
         raw_data.extend(yb);
     }
     for bezier in map.iter() {
         let p = bezier.get_points();
-        let (x, y) = player.to_local_coordinates(p.0.into_tuple().0, p.0.into_tuple().1);
-        let xb = f64::to_be_bytes(x);
-        let yb = f64::to_be_bytes(y);
+        let (x, y) =
+            player.to_local_coordinates(p.0.into_tuple().0 as f32, p.0.into_tuple().1 as f32);
+        let xb = f64::to_be_bytes(x as f64);
+        let yb = f64::to_be_bytes(y as f64);
         raw_data.extend(xb);
         raw_data.extend(yb);
 
-        let (x, y) = player.to_local_coordinates(p.1.into_tuple().0, p.1.into_tuple().1);
-        let xb = f64::to_be_bytes(x);
-        let yb = f64::to_be_bytes(y);
+        let (x, y) =
+            player.to_local_coordinates(p.1.into_tuple().0 as f32, p.1.into_tuple().1 as f32);
+        let xb = f64::to_be_bytes(x as f64);
+        let yb = f64::to_be_bytes(y as f64);
         raw_data.extend(xb);
         raw_data.extend(yb);
 
-        let (x, y) = player.to_local_coordinates(p.2.into_tuple().0, p.2.into_tuple().1);
-        let xb = f64::to_be_bytes(x);
-        let yb = f64::to_be_bytes(y);
+        let (x, y) =
+            player.to_local_coordinates(p.2.into_tuple().0 as f32, p.2.into_tuple().1 as f32);
+        let xb = f64::to_be_bytes(x as f64);
+        let yb = f64::to_be_bytes(y as f64);
         raw_data.extend(xb);
         raw_data.extend(yb);
 
-        let (x, y) = player.to_local_coordinates(p.3.into_tuple().0, p.3.into_tuple().1);
-        let xb = f64::to_be_bytes(x);
-        let yb = f64::to_be_bytes(y);
+        let (x, y) =
+            player.to_local_coordinates(p.3.into_tuple().0 as f32, p.3.into_tuple().1 as f32);
+        let xb = f64::to_be_bytes(x as f64);
+        let yb = f64::to_be_bytes(y as f64);
         raw_data.extend(xb);
         raw_data.extend(yb);
     }
@@ -84,8 +88,8 @@ pub fn racer(players: &mut [player::Player]) -> Result<(), std::io::Error> {
     let mut game = match game::Game::new(vec![], players.len(), &dimensions) {
         Ok(game) => game,
         Err(err) => {
-            panic!("{:?}", err);           
-        },
+            panic!("{:?}", err);
+        }
     };
     loop {
         // let raw_data = encode_data(&game);

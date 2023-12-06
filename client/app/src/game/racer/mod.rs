@@ -7,11 +7,10 @@ use std::ffi::CString;
 use c_char;
 
 use raylib::{
-    ClearBackground, CloseWindow, Color, DrawCircle, DrawFPS, DrawRectanglePro,
-    DrawSplineSegmentBezierCubic, DrawSplineSegmentLinear, DrawText, DrawTexture, GetScreenHeight,
-    GetScreenWidth, GetSplinePointBezierCubic, GetSplinePointLinear, IsMouseButtonDown,
-    IsMouseButtonPressed, LoadTexture, MouseButton, MouseButton_MOUSE_BUTTON_LEFT, Rectangle,
-    SetTargetFPS, TraceLog, TraceLogLevel_LOG_ERROR, UnloadTexture, Vector2, WindowShouldClose,
+    ClearBackground, Color, DrawCircle, DrawFPS, DrawRectanglePro, DrawSplineSegmentBezierCubic,
+    DrawSplineSegmentLinear, DrawText, GetScreenHeight, GetScreenWidth, GetSplinePointBezierCubic,
+    GetSplinePointLinear, IsMouseButtonDown, MouseButton_MOUSE_BUTTON_LEFT, Rectangle,
+    SetTargetFPS, Vector2, WindowShouldClose,
 };
 
 use raylib::{draw, raylib_str};

@@ -201,7 +201,6 @@ impl Connection {
                 tmp.copy_from_slice(&packet.data[12..16]);
                 self.window_width = u32::from_be_bytes(tmp);
 
-                println!("{} {} {} {}", self.physical_height, self.physical_width, self.window_height, self.window_width);
                 self.send_packet(packet);
                 self.status = Status::Initialized;
                 Ok(())
@@ -363,10 +362,9 @@ impl Connection {
                         0,
                         self.session_token,
                         self.room_token,
-                        &message.data.unwrap()[..message.size], // should never be None
+                        &message.data.unwrap(), // should never be None
                         0,
                     );
-                    // println!("{:?}", &message.data.unwrap()[..message.size]);
                     self.send_packet(packet)?;
                 }
                 Err(TryRecvError::Empty) => {}
@@ -374,7 +372,6 @@ impl Connection {
                     return Err(Error::new(ErrorKind::BrokenPipe, "pipe with game broken"))
                 }
             };
-            thread::sleep(time::Duration::from_millis(10));
         }
         Ok(())
     }

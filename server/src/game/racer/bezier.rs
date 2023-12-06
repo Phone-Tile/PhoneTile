@@ -233,41 +233,32 @@ impl Bezier {
             let mut control_2_2;
             if *phone_idx == 0 {
                 let offset_1 = (total_height - dimensions[1].1) / 2.;
-                control_1_1 = control_1.0 * dimensions[1].0 
-                    + widths[1]
-                    + eps;
-                control_1_2 = control_1.1 * dimensions[1].1 / 2.
-                    + offset_1
-                    + dimensions[1].1 / 2.;
-                (control_1_1, control_1_2) = Point::from((control_1_1, control_1_2)).symmetry(Point::from(*input)).into_tuple()
+                control_1_1 = control_1.0 * dimensions[1].0 + widths[1] + eps;
+                control_1_2 = control_1.1 * dimensions[1].1 / 2. + offset_1 + dimensions[1].1 / 2.;
+                (control_1_1, control_1_2) = Point::from((control_1_1, control_1_2))
+                    .symmetry(Point::from(*input))
+                    .into_tuple()
             } else if input.1 > dimensions[*phone_idx].1 / 2. + offset {
-                control_1_1 = control_1.0 * dimensions[*phone_idx].0 
-                    + widths[*phone_idx]
-                    + eps;
+                control_1_1 = control_1.0 * dimensions[*phone_idx].0 + widths[*phone_idx] + eps;
                 control_1_2 = control_1.1 * dimensions[*phone_idx].1 / 2.
                     + offset
                     + dimensions[*phone_idx].1 / 2.;
             } else {
-                control_1_1 = control_1.0 * (dimensions[*phone_idx].0 - 2. * eps)
-                    + widths[*phone_idx]
-                    + eps;
+                control_1_1 =
+                    control_1.0 * (dimensions[*phone_idx].0 - 2. * eps) + widths[*phone_idx] + eps;
                 control_1_2 = control_1.1 * dimensions[*phone_idx].1 / 2. + offset;
             }
             if output.1 > dimensions[*phone_idx].1 / 2. + offset {
-                control_2_1 = control_2.0 * (dimensions[*phone_idx].0 - 2. * eps)
-                    + widths[*phone_idx]
-                    + eps;
+                control_2_1 =
+                    control_2.0 * (dimensions[*phone_idx].0 - 2. * eps) + widths[*phone_idx] + eps;
                 control_2_2 = control_2.1 * dimensions[*phone_idx].1 / 2.
                     + offset
                     + dimensions[*phone_idx].1 / 2.;
             } else {
-                control_2_1 = control_2.0 * (dimensions[*phone_idx].0 - 2. * eps)
-                    + widths[*phone_idx]
-                    + eps;
+                control_2_1 =
+                    control_2.0 * (dimensions[*phone_idx].0 - 2. * eps) + widths[*phone_idx] + eps;
                 control_2_2 = control_2.1 * dimensions[*phone_idx].1 / 2. + offset;
             }
-
-            
 
             opt_bez_curves[i] = Some(Bezier::new(
                 Point::from(*input),

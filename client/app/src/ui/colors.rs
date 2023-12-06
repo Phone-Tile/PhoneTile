@@ -35,6 +35,13 @@ pub const PURPLE: Color = Color {
     a: 255,
 };
 
+pub const PINK: Color = Color {
+    r: 242,
+    g: 159,
+    b: 255,
+    a: 255,
+};
+
 pub const RED: Color = Color {
     r: 250,
     g: 0,
@@ -47,4 +54,11 @@ pub const YELLOW: Color = Color {
     g: 184,
     b: 0,
     a: 255,
+};
+
+pub const ORANGE: Color = Color {
+    r: 255,
+    g: 111,
+    b: 20,
+    a: 225,
 };
