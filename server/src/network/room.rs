@@ -124,7 +124,7 @@ impl Room {
         self.set_player_phone_location();
     }
 
-    fn unlock_game(&mut self) {
+    fn unlock_game(&mut self) -> Result<(), Error> {
         let mut index = 0;
         while index < self.players.len() {
             match self.players[index]
@@ -144,9 +144,11 @@ impl Room {
         // Here we will put the interface code with the client
         match self.game_id {
             client::Game::Racer => crate::game::racer::racer(&self.players),
+            client::Game::MazeFight => crate::game::maze_fight::maze_fight(&mut self.players)?,
             client::Game::Test => test_function(&mut self.players),
             client::Game::Unknown => {}
         }
+        Ok(())
     }
 
     // TODO: might be usefull to warn the other threads before dropping the thread
@@ -155,13 +157,12 @@ impl Room {
             Ok(_) => self.unlock_game(),
             Err(_) => {
                 self.remove_player(0)?;
-                return Err(Error::new(
+                Err(Error::new(
                     ErrorKind::Interrupted,
                     "master client disconnected",
-                ));
+                ))
             }
         }
-        Ok(())
     }
 
     fn add_player(&mut self, message: pipe::ServerMessage) {

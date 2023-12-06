@@ -338,7 +338,7 @@ impl Connection {
         loop {
             // try receive from the client
             if let Some(packet) = packet::Packet::try_recv_packet(&mut self.stream) {
-                packet.check_packet_flag(packet::Flag::Transmit)?;
+                //packet.check_packet_flag(packet::Flag::Transmit)?;
                 match &self.game_sender {
                     Some(sender) => match sender
                         .send(pipe::GameMessage::data_message(packet.data, packet.size))
@@ -372,7 +372,6 @@ impl Connection {
                     return Err(Error::new(ErrorKind::BrokenPipe, "pipe with game broken"))
                 }
             };
-            thread::sleep(time::Duration::from_millis(10));
         }
         Ok(())
     }
