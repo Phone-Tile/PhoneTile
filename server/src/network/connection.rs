@@ -459,3 +459,9 @@ impl Connection {
         }
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use mockall::*;
+}
