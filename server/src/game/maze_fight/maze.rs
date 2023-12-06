@@ -114,8 +114,8 @@ impl Wall {
             std::mem::swap(&mut threashold_min, &mut threashold_max);
         }
 
-        let max = Self::fuck_max(Self::fuck_max(proj1, proj2), Self::fuck_max(proj3, proj4));
-        let min = Self::fuck_min(Self::fuck_min(proj1, proj2), Self::fuck_min(proj3, proj4));
+        let max = f32::max(f32::max(proj1, proj2), f32::max(proj3, proj4));
+        let min = f32::min(f32::min(proj1, proj2), f32::min(proj3, proj4));
 
         if max > threashold_min && min < threashold_max {
             let realign = if threashold_max - min > max - threashold_min {
@@ -126,22 +126,6 @@ impl Wall {
             return realign;
         }
         0.
-    }
-
-    fn fuck_max(x: f32, y: f32) -> f32 {
-        if x > y {
-            x
-        } else {
-            y
-        }
-    }
-
-    fn fuck_min(x: f32, y: f32) -> f32 {
-        if x > y {
-            y
-        } else {
-            x
-        }
     }
 }
 
