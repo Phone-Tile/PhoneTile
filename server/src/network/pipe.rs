@@ -1,6 +1,6 @@
 use super::mock_mpsc::mpsc;
 
-use super::packet::{self, BUFFER_SIZE};
+use super::packet::{self, BUFFER_SIZE, Flag};
 
 #[cfg(test)]
 use super::test;
@@ -17,6 +17,15 @@ use super::test;
 pub enum ServerMessageFlag {
     Create,
     Join,
+}
+
+impl From<usize> for ServerMessageFlag {
+    fn from(value: usize) -> Self {
+        match value {
+            0 => Self::Create,
+            _ => Self::Join,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -60,6 +69,19 @@ pub enum GameMessageFlag {
 
     Disconnected,
     Error,
+}
+
+impl From<usize> for GameMessageFlag {
+    fn from(value: usize) -> Self {
+        match value {
+            0 => Self::Init,
+            1 => Self::Lock,
+            2 => Self::Launch,
+            3 => Self::Data,
+            4 => Self::Disconnected,
+            _ => Self::Error,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -151,11 +173,10 @@ impl GameMessage {
 #[cfg(test)]
 #[repr(usize)]
 #[derive(Clone)]
-pub enum Fuzz {
+pub enum ServerMessageFuzz {
     SessionTocken,
     RoomTocken,
     Flag,
-    Sender,
     PhysicalHeight,
     PhysicalWidth,
     WindowHeight,
@@ -163,8 +184,8 @@ pub enum Fuzz {
 }
 
 #[cfg(test)]
-impl test::AutoGenFuzz<ServerMessage, Fuzz> for ServerMessage {
-    fn fuzz_a_packet(packet: ServerMessage, skip_fuzzing: &Vec<Fuzz>) -> Vec<ServerMessage> {
+impl test::AutoGenFuzz<ServerMessage, ServerMessageFuzz> for ServerMessage {
+    fn fuzz_a_packet(packet: ServerMessage, skip_fuzzing: &Vec<ServerMessageFuzz>) -> Vec<ServerMessage> {
         let mut res = vec![];
 
         let mut fuzzing = [true; 8];
@@ -172,44 +193,43 @@ impl test::AutoGenFuzz<ServerMessage, Fuzz> for ServerMessage {
             fuzzing[f.clone() as usize] = false;
         }
 
-        if fuzzing[Fuzz::SessionTocken as usize] {
+        if fuzzing[ServerMessageFuzz::SessionTocken as usize] {
             let mut tmp = packet.clone();
             tmp.session_token += 1;
             res.push(tmp);
         }
 
-        if fuzzing[Fuzz::RoomTocken as usize] {
+        if fuzzing[ServerMessageFuzz::RoomTocken as usize] {
             let mut tmp = packet.clone();
             tmp.room_token += 1;
             res.push(tmp);
         }
 
-        if fuzzing[Fuzz::Sender as usize] {
+        if fuzzing[ServerMessageFuzz::Flag as usize] {
             let mut tmp = packet.clone();
-            let (sender, _) = mpsc::channel();
-            tmp.sender = sender;
+            tmp.flag = ((tmp.flag as usize) + 1).into();
             res.push(tmp);
         }
 
-        if fuzzing[Fuzz::PhysicalHeight as usize] {
+        if fuzzing[ServerMessageFuzz::PhysicalHeight as usize] {
             let mut tmp = packet.clone();
             tmp.physical_height += 1.;
             res.push(tmp);
         }
 
-        if fuzzing[Fuzz::PhysicalWidth as usize] {
+        if fuzzing[ServerMessageFuzz::PhysicalWidth as usize] {
             let mut tmp = packet.clone();
             tmp.physical_width += 1.;
             res.push(tmp);
         }
 
-        if fuzzing[Fuzz::WindowHeight as usize] {
+        if fuzzing[ServerMessageFuzz::WindowHeight as usize] {
             let mut tmp = packet.clone();
             tmp.window_height += 1;
             res.push(tmp);
         }
 
-        if fuzzing[Fuzz::WindowWidth as usize] {
+        if fuzzing[ServerMessageFuzz::WindowWidth as usize] {
             let mut tmp = packet.clone();
             tmp.window_width += 1;
             res.push(tmp);
@@ -218,3 +238,81 @@ impl test::AutoGenFuzz<ServerMessage, Fuzz> for ServerMessage {
         res
     }
 }
+
+#[cfg(test)]
+#[repr(usize)]
+#[derive(Clone)]
+pub enum GameMessageFuzz {
+    Flag,
+    RoomToken,
+    Rank,
+    Size,
+    Data,
+}
+
+#[cfg(test)]
+impl test::AutoGenFuzz<GameMessage, GameMessageFuzz> for GameMessage {
+    fn fuzz_a_packet(packet: GameMessage, skip_fuzzing: &Vec<GameMessageFuzz>) -> Vec<GameMessage> {
+        let mut res = vec![];
+
+        let mut fuzzing = [true; 8];
+        for f in skip_fuzzing.iter() {
+            fuzzing[f.clone() as usize] = false;
+        }
+
+        if fuzzing[GameMessageFuzz::Flag as usize] {
+            let mut tmp = packet.clone();
+            tmp.flag = ((tmp.flag as usize) + 1).into();
+            res.push(tmp);
+        }
+
+        if fuzzing[GameMessageFuzz::RoomToken as usize] {
+            let mut tmp = packet.clone();
+            tmp.room_token += 1;
+            res.push(tmp);
+        }
+
+        if fuzzing[GameMessageFuzz::Rank as usize] {
+            match packet.rank {
+                Some(i) => {
+                    let mut tmp = packet.clone();
+                    tmp.rank = Some(i+1);
+                    res.push(tmp);
+                    tmp = packet.clone();
+                    tmp.rank = None;
+                    res.push(tmp);
+                },
+                None => {
+                    let mut tmp = packet.clone();
+                    tmp.rank = Some(0);
+                    res.push(tmp);
+                },
+            }
+        }
+
+        if fuzzing[GameMessageFuzz::Size as usize] {
+            let mut tmp = packet.clone();
+            tmp.size += 1;
+            res.push(tmp);
+        }
+
+        if fuzzing[GameMessageFuzz::Data as usize] {
+            match packet.data {
+                Some(_) => {
+                    let mut tmp = packet.clone();
+                    tmp.data = None;
+                    res.push(tmp);
+                },
+                None => {
+                    let mut tmp = packet.clone();
+                    tmp.data = Some([0_u8; packet::MAX_DATA_SIZE]);
+                    res.push(tmp);
+                },
+            }
+        }
+
+        res
+    }
+}
+
+

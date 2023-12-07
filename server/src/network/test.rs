@@ -28,6 +28,10 @@ where
                 output.append(&mut suffix.clone());
                 res.push(output)
             }
+            let mut output = vec![];
+            output.append(&mut prefix.clone());
+            output.append(&mut suffix.clone());
+            res.push(output);
         }
 
         res

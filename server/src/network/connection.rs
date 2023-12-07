@@ -20,7 +20,7 @@ use std::{error, thread};
 ///
 //////////////////////////////////////////////
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 enum Lock {
     Enabled,
     Disabled,
@@ -418,6 +418,9 @@ impl Connection {
             .unwrap(); // should never happened
         match self.game_recv.recv() {
             Ok(message) => {
+                if message.flag != pipe::GameMessageFlag::Init {
+                    return Err(Error::new(ErrorKind::InvalidData, "invalid incomming data"));
+                }
                 self.room_token = message.room_token;
                 self.game_sender = message.sender;
                 let packet = packet::Packet::new(
@@ -476,27 +479,6 @@ mod tests {
     use super::{client, packet, Connection};
 
     use crate::network::mock_net::{TcpListener, TcpStream};
-
-    fn generate_boggus_versions(
-        packets: &Vec<[u8; packet::BUFFER_SIZE]>,
-    ) -> Vec<[u8; packet::BUFFER_SIZE]> {
-        let mut res = vec![];
-        for p in packets.iter() {
-            let mut tmp = p.clone();
-            tmp[0] = packet::Version::Unknown.into();
-            res.push(tmp);
-        }
-        res
-    }
-
-    fn generate_boggus_flags(
-        packets: &Vec<[u8; packet::BUFFER_SIZE]>,
-    ) -> Vec<[u8; packet::BUFFER_SIZE]> {
-        let mut res = vec![];
-        for p in packets.iter() {}
-
-        res
-    }
 
     //////////////////////////////////////////////
     ///
@@ -567,16 +549,16 @@ mod tests {
                     0,
                 )];
 
-                let stream = TcpStream::new(normal_input, normal_output);
+                let stream = TcpStream::new(normal_input.clone(), normal_output);
 
                 let (game_sender, _) = mpsc::channel_with_checks(vec![], vec![]);
                 let local_inputs = vec![pipe::GameMessage::init_message(
                     game_sender.clone(),
                     room_token,
                 )];
-
                 let (local_sender, local_recv) =
                     mpsc::channel_with_checks(vec![], local_inputs.clone());
+
                 let main_outputs = vec![pipe::ServerMessage {
                     session_token,
                     flag: pipe::ServerMessageFlag::Create,
@@ -587,7 +569,6 @@ mod tests {
                     window_height: 3,
                     window_width: 4,
                 }];
-
                 let (main_sender, _) = mpsc::channel_with_checks(main_outputs, vec![]);
 
                 let mut connection = Connection {
@@ -596,21 +577,54 @@ mod tests {
                     session_token,
                     room_token: 0,
                     game_id: client::Game::Unknown,
-                    stream,
+                    stream: stream.clone(),
                     physical_height: 1.,
                     physical_width: 2.,
                     window_height: 3,
                     window_width: 4,
-                    main_sender,
+                    main_sender: main_sender.clone(),
                     game_sender: None,
                     game_recv: local_recv,
                     my_sender: local_sender,
                 };
 
-                connection.join_room_with_create();
+                connection.join_room_with_create().unwrap();
 
                 assert_eq!(connection.room_token, room_token);
                 assert_eq!(connection.game_sender, Some(game_sender));
+
+                let fuzz_local_inputs = pipe::GameMessage::generate_fuzzing(&local_inputs, &vec![
+                        vec![
+                            pipe::GameMessageFuzz::RoomToken,
+                            pipe::GameMessageFuzz::Rank,
+                            pipe::GameMessageFuzz::Size,
+                            pipe::GameMessageFuzz::Data,
+                        ]
+                    ]);
+
+                for exec in fuzz_local_inputs {
+                    let (local_sender, local_recv) =
+                    mpsc::channel_with_checks(vec![], exec);
+
+                    let mut connection = Connection {
+                        status: super::Status::Created,
+                        target: "".into(),
+                        session_token,
+                        room_token: 0,
+                        game_id: client::Game::Unknown,
+                        stream: stream.clone(),
+                        physical_height: 1.,
+                        physical_width: 2.,
+                        window_height: 3,
+                        window_width: 4,
+                        main_sender: main_sender.clone(),
+                        game_sender: None,
+                        game_recv: local_recv,
+                        my_sender: local_sender,
+                    };
+
+                    connection.join_room_with_create().unwrap_err();
+                }
             }
         }
     }
