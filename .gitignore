@@ -24,3 +24,6 @@ Cargo.lock
 *.gif
 
 *.idsig
+
+*.profraw
+*.profdata

@@ -1,7 +1,7 @@
+use super::mock_net::TcpStream;
 use super::packet;
 use std::fmt::{write, Display};
 use std::io::{Error, ErrorKind, Read, Write};
-use std::net::TcpStream;
 use std::{thread, time};
 
 /// All of those functions are completely non-blocking
@@ -131,7 +131,7 @@ impl Network {
     /// to connect themselves to it
     pub fn create_room(&mut self) -> Result<u16, Error> {
         let packet_room_creation =
-            packet::Packet::new(packet::Flag::Create, 0, self.session_token, 0, &[], 0);
+            packet::Packet::new(packet::Flag::CreateRoom, 0, self.session_token, 0, &[], 0);
         packet_room_creation.send_packet(&mut self.stream)?;
 
         let packet = packet::Packet::recv_packet(&mut self.stream)?;
@@ -143,7 +143,7 @@ impl Network {
     /// Join a room with the given room ID
     pub fn join_room(&mut self, room_token: u16) -> Result<(), Error> {
         packet::Packet::new(
-            packet::Flag::Join,
+            packet::Flag::JoinRoom,
             0,
             self.session_token,
             room_token,

@@ -1,17 +1,22 @@
 #![allow(unused)]
 use log::{error, info, warn};
 use std::io::{self, Error, Write};
-use std::net::{TcpListener, TcpStream};
-use std::sync::mpsc::{self, TryRecvError};
 use std::thread;
 use std::time;
 use std::vec::Vec;
 
 mod connection;
+mod mock_mpsc;
+mod mock_net;
 pub mod packet;
 mod pipe;
 pub mod player;
 mod room;
+#[cfg(test)]
+mod test;
+
+use mock_mpsc::mpsc::{self, TryRecvError};
+use mock_net::{TcpListener, TcpStream};
 
 /// The general pipe system will be the following :
 ///
@@ -179,7 +184,7 @@ impl Server {
     fn handle_connection_pipe_message(&mut self, message: pipe::ServerMessage) {
         match message.flag {
             pipe::ServerMessageFlag::Create => {
-                let (sender, receiver) = mpsc::channel();
+                let (mut sender, receiver) = mpsc::channel();
 
                 let mut game = room::Room::new(receiver, self.room_token);
                 // game.add_player(message.sender);
@@ -200,7 +205,7 @@ impl Server {
                 self.room_token += 1;
             }
             pipe::ServerMessageFlag::Join => {
-                for g in self.games.iter() {
+                for g in self.games.iter_mut() {
                     if g.token == message.room_token {
                         match g.sender.send(message) {
                             Ok(_) => {}
@@ -284,7 +289,7 @@ mod client;
 mod tests {
     use super::*;
     use std::*;
-    #[test]
+    //#[test]
     fn test_server_client_comm() {
         let _ = thread::spawn(|| {
             let mut server = Server::new();

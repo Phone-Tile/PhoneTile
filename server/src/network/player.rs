@@ -1,9 +1,8 @@
+use super::mock_mpsc::mpsc::{self, TryRecvError};
 use super::packet;
 use super::pipe;
 use std::io::Error;
 use std::io::ErrorKind;
-use std::sync::mpsc;
-use std::sync::mpsc::TryRecvError;
 
 //////////////////////////////////////////////
 ///

@@ -3,7 +3,9 @@ use std::convert::TryFrom;
 use std::fmt::Display;
 use std::hash::BuildHasher;
 use std::io::{Error, ErrorKind, Read, Write};
-use std::net::TcpStream;
+
+use super::mock_net::TcpStream;
+
 use std::thread;
 use std::time::{self, SystemTime};
 
@@ -69,11 +71,11 @@ impl From<ProtocolError> for u8 {
 impl Display for ProtocolError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ProtocolError::ServerDown => write!(f, "ServerDown"),
-            ProtocolError::GameCrashed => write!(f, "GameCrashed"),
-            ProtocolError::RoomClosed => write!(f, "RoomClosed"),
-            ProtocolError::InvalidPacket => write!(f, "InvalidPacket"),
-            ProtocolError::InvalidRequest => write!(f, "InvalidRequest"),
+            ProtocolError::ServerDown => write!(f, "Serve Down"),
+            ProtocolError::GameCrashed => write!(f, "Game Crashed"),
+            ProtocolError::RoomClosed => write!(f, "Room Closed"),
+            ProtocolError::InvalidPacket => write!(f, "Invalid Packet"),
+            ProtocolError::InvalidRequest => write!(f, "Invalid Request"),
             ProtocolError::Unknown => write!(f, "Unknown"),
         }
     }
@@ -91,8 +93,8 @@ impl Display for ProtocolError {
 pub enum Flag {
     Error(ProtocolError),
     Init,
-    Create,
-    Join,
+    CreateRoom,
+    JoinRoom,
     Lock,
     Launch,
     Transmit,
@@ -106,8 +108,8 @@ impl From<u8> for Flag {
         } else {
             match orig {
                 1 => Flag::Init,
-                2 => Flag::Create,
-                3 => Flag::Join,
+                2 => Flag::CreateRoom,
+                3 => Flag::JoinRoom,
                 4 => Flag::Lock,
                 5 => Flag::Launch,
                 6 => Flag::Transmit,
@@ -122,8 +124,8 @@ impl From<Flag> for u8 {
         match orig {
             Flag::Error(e) => e.into(),
             Flag::Init => 1,
-            Flag::Create => 2,
-            Flag::Join => 3,
+            Flag::CreateRoom => 2,
+            Flag::JoinRoom => 3,
             Flag::Lock => 4,
             Flag::Launch => 5,
             Flag::Transmit => 6,
@@ -136,8 +138,8 @@ impl Display for Flag {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Flag::Init => write!(f, "Init"),
-            Flag::Create => write!(f, "Create"),
-            Flag::Join => write!(f, "Join"),
+            Flag::CreateRoom => write!(f, "Create room"),
+            Flag::JoinRoom => write!(f, "Join room"),
             Flag::Lock => write!(f, "Lock"),
             Flag::Launch => write!(f, "Launch"),
             Flag::Transmit => write!(f, "Transmit"),
@@ -414,5 +416,89 @@ impl Packet {
             }
             thread::sleep(time::Duration::from_millis(30));
         }
+    }
+
+    #[cfg(test)]
+    pub fn pub_pack(&self) -> [u8; BUFFER_SIZE] {
+        let mut buff = [0_u8; BUFFER_SIZE];
+        self.pack(&mut buff);
+        buff
+    }
+
+    #[cfg(test)]
+    pub fn pub_unpack(packet: &[u8; BUFFER_SIZE]) -> Result<Packet, Error> {
+        Self::unpack(packet)
+    }
+}
+
+#[cfg(test)]
+use crate::network::test::AutoGenFuzz;
+
+#[cfg(test)]
+#[repr(usize)]
+#[derive(Clone, Copy)]
+pub enum Fuzz {
+    Version,
+    Flag,
+    Sync,
+    Size,
+    Data,
+    Option,
+    Session,
+    Room,
+}
+
+#[cfg(test)]
+impl AutoGenFuzz<Packet, Fuzz> for Packet {
+    fn fuzz_a_packet(packet: Packet, skip_fuzz: &Vec<Fuzz>) -> Vec<Packet> {
+        let mut res = vec![];
+
+        let mut fuzzing = [true; 8];
+        for f in skip_fuzz.iter() {
+            fuzzing[f.clone() as usize] = false;
+        }
+
+        if fuzzing[Fuzz::Version as usize] {
+            let mut tmp = packet.clone();
+            tmp.version = (u8::from(tmp.version) + 1).into();
+            res.push(tmp);
+        }
+
+        // fuzz flag
+        if fuzzing[Fuzz::Flag as usize] {
+            let mut tmp = packet.clone();
+            tmp.flag = (u8::from(tmp.flag) + 1).into();
+            res.push(tmp);
+        }
+
+        // fuzz sync
+        if fuzzing[Fuzz::Sync as usize] {
+            let mut tmp = packet.clone();
+            tmp.sync += 1;
+            res.push(tmp);
+        }
+
+        // fuzz option
+        if fuzzing[Fuzz::Option as usize] {
+            let mut tmp = packet.clone();
+            tmp.option += 1;
+            res.push(tmp);
+        }
+
+        // fuzz session
+        if fuzzing[Fuzz::Session as usize] {
+            let mut tmp = packet.clone();
+            tmp.session += 1;
+            res.push(tmp);
+        }
+
+        // fuzz room
+        if fuzzing[Fuzz::Room as usize] {
+            let mut tmp = packet.clone();
+            tmp.room += 1;
+            res.push(tmp);
+        }
+
+        res
     }
 }

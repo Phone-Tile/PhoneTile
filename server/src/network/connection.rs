@@ -1,17 +1,16 @@
 use super::client;
 use super::packet::{HEADER_SIZE, MAX_DATA_SIZE};
 use super::pipe::{self, GameMessage};
-use crate::network::packet;
 
+use super::mock_net::TcpStream;
 use log::{error, info, warn};
 use std::io::{Error, ErrorKind, Read, Write};
-use std::net::TcpStream;
-use std::sync::mpsc::{self, TryRecvError};
+
+use crate::network::packet;
+
+use super::mock_mpsc::mpsc::{self, TryRecvError};
 use std::time;
 use std::{error, thread};
-
-/// TODO: I ave to implement the forwading of the game chosen to the room manager !!!!!!!!!!!!!!!!!!!
-/// And choose when to do that .........
 
 //////////////////////////////////////////////
 ///
@@ -27,9 +26,12 @@ enum Lock {
     Disabled,
 }
 
+#[derive(Debug, PartialEq)]
 enum Status {
     Created,
     Initialized,
+
+    Error,
 }
 
 //////////////////////////////////////////////
@@ -57,11 +59,10 @@ pub struct Connection {
     // Sender for the main thread (game creation / join request)
     main_sender: mpsc::Sender<pipe::ServerMessage>,
 
-    // Sender for the game thread (game oriented communication)
     game_sender: Option<mpsc::Sender<GameMessage>>,
+    game_recv: mpsc::Receiver<GameMessage>,
 
-    // Receiver for the game thread to send us data
-    my_recv: Option<mpsc::Receiver<GameMessage>>,
+    my_sender: mpsc::Sender<GameMessage>,
 }
 
 impl Connection {
@@ -86,6 +87,8 @@ impl Connection {
             }
         }
 
+        let (my_sender, my_recv) = mpsc::channel();
+
         Connection {
             status: Status::Created,
             target,
@@ -99,7 +102,8 @@ impl Connection {
             window_width: 0,
             main_sender,
             game_sender: None,
-            my_recv: None,
+            game_recv: my_recv,
+            my_sender,
         }
     }
 
@@ -108,7 +112,7 @@ impl Connection {
             Ok(_) => {}
             Err(e) => {
                 error!(target: self.target.as_str(), "unabled to initiate handshake : {e}");
-                return Ok(());
+                return Err(e);
             }
         }
         info!(target: self.target.as_str(), "Handshake done");
@@ -201,7 +205,9 @@ impl Connection {
                 tmp.copy_from_slice(&packet.data[12..16]);
                 self.window_width = u32::from_be_bytes(tmp);
 
-                self.send_packet(packet);
+                let reply =
+                    packet::Packet::new(packet::Flag::Init, 0, self.session_token, 0, &[], 0);
+                self.send_packet(reply);
                 self.status = Status::Initialized;
                 Ok(())
             }
@@ -215,9 +221,15 @@ impl Connection {
             Ok(packet) => {
                 let flag = packet.get_flag();
                 let room_token = packet.room;
+                if packet.session != self.session_token {
+                    return Err(Error::new(
+                        ErrorKind::InvalidData,
+                        "not a valid session-ID, abord connection",
+                    ));
+                }
                 match flag {
-                    packet::Flag::Create => self.join_room_with_create(),
-                    packet::Flag::Join => self.join_room_with_join(room_token),
+                    packet::Flag::CreateRoom => self.join_room_with_create(),
+                    packet::Flag::JoinRoom => self.join_room_with_join(room_token),
                     _ => Err(Error::new(
                         ErrorKind::InvalidInput,
                         "an unexpected packet was received",
@@ -241,21 +253,21 @@ impl Connection {
                         return Err(Error::new(ErrorKind::NotConnected, "client disconnected"));
                     }
                 }
-                let sender = self.game_sender.as_ref().unwrap();
+                let sender = self.game_sender.as_mut().unwrap();
                 match sender.send(pipe::GameMessage::lock_message(self.game_id.into())) {
                     Ok(_) => {}
                     Err(e) => {
                         return Err(Error::new(ErrorKind::BrokenPipe, "pipe with game broken"))
                     }
                 }
-                match self.my_recv.as_ref().unwrap().recv() {
+                match self.game_recv.recv() {
                     Ok(m) => Ok(m.rank.unwrap() as u8), // should never be None
                     Err(e) => Err(Error::new(ErrorKind::BrokenPipe, "pipe with game broken")),
                 }
             }
             Lock::Disabled => {
                 // listen to game_receiver for lock message
-                match self.my_recv.as_ref().unwrap().recv() {
+                match self.game_recv.recv() {
                     Ok(m) => Ok(m.rank.unwrap() as u8), // should never be None
                     Err(e) => Err(Error::new(ErrorKind::BrokenPipe, "pipe with game broken")),
                 }
@@ -294,7 +306,7 @@ impl Connection {
                         return Err(Error::new(ErrorKind::BrokenPipe, "pipe with game broken"))
                     }
                 }
-                match self.my_recv.as_ref().unwrap().recv() {
+                match self.game_recv.recv() {
                     Ok(_) => {
                         let packet = packet::Packet::new(
                             packet::Flag::Launch,
@@ -313,7 +325,7 @@ impl Connection {
             }
             Lock::Disabled => {
                 // listen to game_receiver for lock message
-                match self.my_recv.as_ref().unwrap().recv() {
+                match self.game_recv.recv() {
                     Ok(_) => {
                         let packet = packet::Packet::new(
                             packet::Flag::Launch,
@@ -339,7 +351,7 @@ impl Connection {
             // try receive from the client
             if let Some(packet) = packet::Packet::try_recv_packet(&mut self.stream) {
                 //packet.check_packet_flag(packet::Flag::Transmit)?;
-                match &self.game_sender {
+                match &mut self.game_sender {
                     Some(sender) => match sender
                         .send(pipe::GameMessage::data_message(packet.data, packet.size))
                     {
@@ -354,7 +366,7 @@ impl Connection {
             }
 
             // try receive from the game
-            let error = &self.my_recv.as_ref().unwrap().try_recv(); // is will
+            let error = &self.game_recv.try_recv(); // is will
             match error {
                 Ok(message) => {
                     let packet = packet::Packet::new(
@@ -392,26 +404,24 @@ impl Connection {
     }
 
     fn join_room_with_create(&mut self) -> Result<Lock, Error> {
-        let (sender, receiver) = mpsc::channel();
         self.main_sender
             .send(pipe::ServerMessage {
                 session_token: self.session_token,
                 flag: pipe::ServerMessageFlag::Create,
                 room_token: 0,
-                sender,
+                sender: self.my_sender.clone(),
                 physical_height: self.physical_height,
                 physical_width: self.physical_width,
                 window_height: self.window_height,
                 window_width: self.window_width,
             })
             .unwrap(); // should never happened
-        self.my_recv = Some(receiver);
-        match self.my_recv.as_ref().unwrap().recv() {
+        match self.game_recv.recv() {
             Ok(message) => {
                 self.room_token = message.room_token;
                 self.game_sender = message.sender;
                 let packet = packet::Packet::new(
-                    packet::Flag::Create,
+                    packet::Flag::CreateRoom,
                     0,
                     self.session_token,
                     self.room_token,
@@ -426,26 +436,24 @@ impl Connection {
     }
 
     fn join_room_with_join(&mut self, room_token: u16) -> Result<Lock, Error> {
-        let (sender, receiver) = mpsc::channel();
         self.main_sender
             .send(pipe::ServerMessage {
                 session_token: self.session_token,
                 flag: pipe::ServerMessageFlag::Join,
                 room_token,
-                sender,
+                sender: self.my_sender.clone(),
                 physical_height: self.physical_height,
                 physical_width: self.physical_width,
                 window_height: self.window_height,
                 window_width: self.window_width,
             })
             .unwrap();
-        self.my_recv = Some(receiver);
-        match self.my_recv.as_ref().unwrap().recv() {
+        match self.game_recv.recv() {
             Ok(message) => {
                 self.room_token = message.room_token;
                 self.game_sender = message.sender;
                 let packet = packet::Packet::new(
-                    packet::Flag::Create,
+                    packet::Flag::CreateRoom,
                     0,
                     self.session_token,
                     self.room_token,
@@ -460,8 +468,156 @@ impl Connection {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use mockall::*;
+    use crate::network::{mock_mpsc::mpsc, pipe, test::AutoGenFuzz};
+    use std::vec;
+
+    use super::{client, packet, Connection};
+
+    use crate::network::mock_net::{TcpListener, TcpStream};
+
+    fn generate_boggus_versions(
+        packets: &Vec<[u8; packet::BUFFER_SIZE]>,
+    ) -> Vec<[u8; packet::BUFFER_SIZE]> {
+        let mut res = vec![];
+        for p in packets.iter() {
+            let mut tmp = p.clone();
+            tmp[0] = packet::Version::Unknown.into();
+            res.push(tmp);
+        }
+        res
+    }
+
+    fn generate_boggus_flags(
+        packets: &Vec<[u8; packet::BUFFER_SIZE]>,
+    ) -> Vec<[u8; packet::BUFFER_SIZE]> {
+        let mut res = vec![];
+        for p in packets.iter() {}
+
+        res
+    }
+
+    //////////////////////////////////////////////
+    ///
+    ///
+    /// Unit tests
+    ///
+    ///
+    //////////////////////////////////////////////
+
+    #[test]
+    fn unit_handshake() {
+        // normal behaviour
+        for i in 0..5 {
+            let normal_input = vec![packet::Packet::new(packet::Flag::Init, 0, 0, 0, &[], 0)];
+            let normal_output = vec![packet::Packet::new(
+                packet::Flag::Init,
+                0,
+                i as u16,
+                0,
+                &[],
+                0,
+            )];
+
+            let stream = TcpStream::new(normal_input.clone(), normal_output.clone());
+
+            let (sender, receiver) = mpsc::channel();
+
+            let mut connection = Connection::new(stream, i, sender);
+
+            connection.handshake().unwrap();
+            assert_eq!(connection.status, super::Status::Initialized);
+
+            let fuzzing = packet::Packet::generate_fuzzing(
+                &normal_input,
+                &vec![vec![
+                    packet::Fuzz::Session,
+                    packet::Fuzz::Room,
+                    packet::Fuzz::Sync,
+                    packet::Fuzz::Option,
+                    packet::Fuzz::Size,
+                ]],
+            );
+
+            for exec in fuzzing {
+                let stream = TcpStream::new(exec.clone(), normal_output.clone());
+
+                let (sender, receiver) = mpsc::channel();
+
+                let mut connection = Connection::new(stream, i, sender);
+
+                connection.handshake().unwrap_err();
+            }
+        }
+    }
+
+    #[test]
+    fn unit_join_room_with_create() {
+        // normal behaviour
+        for session_token in 0..5 {
+            for room_token in 0..5 {
+                let normal_input = vec![];
+                let normal_output = vec![packet::Packet::new(
+                    packet::Flag::CreateRoom,
+                    0,
+                    session_token,
+                    room_token,
+                    &[],
+                    0,
+                )];
+
+                let stream = TcpStream::new(normal_input, normal_output);
+
+                let (game_sender, _) = mpsc::channel_with_checks(vec![], vec![]);
+                let local_inputs = vec![pipe::GameMessage::init_message(
+                    game_sender.clone(),
+                    room_token,
+                )];
+
+                let (local_sender, local_recv) =
+                    mpsc::channel_with_checks(vec![], local_inputs.clone());
+                let main_outputs = vec![pipe::ServerMessage {
+                    session_token,
+                    flag: pipe::ServerMessageFlag::Create,
+                    room_token: 0,
+                    sender: local_sender.clone(),
+                    physical_height: 1.,
+                    physical_width: 2.,
+                    window_height: 3,
+                    window_width: 4,
+                }];
+
+                let (main_sender, _) = mpsc::channel_with_checks(main_outputs, vec![]);
+
+                let mut connection = Connection {
+                    status: super::Status::Created,
+                    target: "".into(),
+                    session_token,
+                    room_token: 0,
+                    game_id: client::Game::Unknown,
+                    stream,
+                    physical_height: 1.,
+                    physical_width: 2.,
+                    window_height: 3,
+                    window_width: 4,
+                    main_sender,
+                    game_sender: None,
+                    game_recv: local_recv,
+                    my_sender: local_sender,
+                };
+
+                connection.join_room_with_create();
+
+                assert_eq!(connection.room_token, room_token);
+                assert_eq!(connection.game_sender, Some(game_sender));
+            }
+        }
+    }
+
+    #[test]
+    fn unit_join_room_with_join() {}
+
+    #[test]
+    fn unit_join_room() {}
 }

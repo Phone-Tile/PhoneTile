@@ -1,9 +1,9 @@
 use log::{info, warn};
 
+use super::mock_mpsc::mpsc::{self, TryRecvError};
 use super::{client, player};
 use super::{packet, pipe};
 use std::io::{Error, ErrorKind};
-use std::sync::mpsc::{self, TryRecvError};
 use std::thread;
 use std::time;
 
@@ -77,9 +77,9 @@ impl Room {
 
     fn check_for_new_players(&mut self) {
         match self.main_receiver.try_recv() {
-            Ok(message) => {
+            Ok(mut message) => {
                 info!(target: self.target.as_str(), "Client {} joined the room", message.session_token);
-                self.add_player(message);
+                self.add_player(&mut message);
             }
             Err(TryRecvError::Empty) => (),
             Err(_) => panic!("Pipe with the server broke unexpectedly"),
@@ -165,15 +165,15 @@ impl Room {
         }
     }
 
-    fn add_player(&mut self, message: pipe::ServerMessage) {
-        let (sender, receiver) = mpsc::channel();
+    fn add_player(&mut self, message: &mut pipe::ServerMessage) {
+        let (mut sender, receiver) = mpsc::channel();
         match message
             .sender
             .send(pipe::GameMessage::init_message(sender, self.token))
         {
             Ok(_) => {
                 self.players.push(player::Player {
-                    sender: message.sender,
+                    sender: message.sender.clone(),
                     receiver,
                     rank: 0,
                     top_left_x: 0.,
