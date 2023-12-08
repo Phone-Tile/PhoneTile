@@ -126,7 +126,7 @@ impl Network {
             self.session_token,
             self.room_token,
             &[],
-            game_id.    (),
+            game_id.into(),
         )
         .send_packet(&mut self.stream)
     }
