@@ -1,6 +1,6 @@
 use super::mock_mpsc::mpsc;
 
-use super::packet::{self, BUFFER_SIZE, Flag};
+use super::packet::{self, Flag, BUFFER_SIZE};
 
 #[cfg(test)]
 use super::test;
@@ -185,7 +185,10 @@ pub enum ServerMessageFuzz {
 
 #[cfg(test)]
 impl test::AutoGenFuzz<ServerMessage, ServerMessageFuzz> for ServerMessage {
-    fn fuzz_a_packet(packet: ServerMessage, skip_fuzzing: &Vec<ServerMessageFuzz>) -> Vec<ServerMessage> {
+    fn fuzz_a_packet(
+        packet: ServerMessage,
+        skip_fuzzing: &Vec<ServerMessageFuzz>,
+    ) -> Vec<ServerMessage> {
         let mut res = vec![];
 
         let mut fuzzing = [true; 8];
@@ -276,17 +279,17 @@ impl test::AutoGenFuzz<GameMessage, GameMessageFuzz> for GameMessage {
             match packet.rank {
                 Some(i) => {
                     let mut tmp = packet.clone();
-                    tmp.rank = Some(i+1);
+                    tmp.rank = Some(i + 1);
                     res.push(tmp);
                     tmp = packet.clone();
                     tmp.rank = None;
                     res.push(tmp);
-                },
+                }
                 None => {
                     let mut tmp = packet.clone();
                     tmp.rank = Some(0);
                     res.push(tmp);
-                },
+                }
             }
         }
 
@@ -302,17 +305,15 @@ impl test::AutoGenFuzz<GameMessage, GameMessageFuzz> for GameMessage {
                     let mut tmp = packet.clone();
                     tmp.data = None;
                     res.push(tmp);
-                },
+                }
                 None => {
                     let mut tmp = packet.clone();
                     tmp.data = Some([0_u8; packet::MAX_DATA_SIZE]);
                     res.push(tmp);
-                },
+                }
             }
         }
 
         res
     }
 }
-
-

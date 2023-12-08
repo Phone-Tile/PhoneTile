@@ -9,7 +9,7 @@ pub mod mpsc {
 
     #[derive(Clone, Debug)]
     pub struct Sender<T> {
-        outputs: Vec<T>,
+        pub outputs: Vec<T>,
         id: usize,
     }
 
@@ -34,7 +34,7 @@ pub mod mpsc {
 
     #[derive(Clone, Debug)]
     pub struct Receiver<T> {
-        inputs: Vec<T>,
+        pub inputs: Vec<T>,
         id: usize,
     }
 

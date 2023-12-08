@@ -1,0 +1,33 @@
+handshake {
+    network {
+        send {
+            flag: Init,
+            sync: *,
+            session_token: *,
+            room_token: *,
+            data: *,
+            option: *,
+        }
+        reply {
+            flag: Init,
+            sync: *,
+            session_token: session_token,
+            room_token: *,
+            data: *,
+            option: *,
+        }
+    }
+}
+
+join_room {
+    network {
+        send {
+            flag: Join | Create,
+            sync: *,
+            session_token: *,
+            room_token: *,
+            data: *,
+            option: *,
+        }
+    }
+}

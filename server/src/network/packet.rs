@@ -437,7 +437,7 @@ use crate::network::test::AutoGenFuzz;
 #[cfg(test)]
 #[repr(usize)]
 #[derive(Clone, Copy)]
-pub enum Fuzz {
+pub enum PacketFuzz {
     Version,
     Flag,
     Sync,
@@ -449,8 +449,8 @@ pub enum Fuzz {
 }
 
 #[cfg(test)]
-impl AutoGenFuzz<Packet, Fuzz> for Packet {
-    fn fuzz_a_packet(packet: Packet, skip_fuzz: &Vec<Fuzz>) -> Vec<Packet> {
+impl AutoGenFuzz<Packet, PacketFuzz> for Packet {
+    fn fuzz_a_packet(packet: Packet, skip_fuzz: &Vec<PacketFuzz>) -> Vec<Packet> {
         let mut res = vec![];
 
         let mut fuzzing = [true; 8];
@@ -458,42 +458,42 @@ impl AutoGenFuzz<Packet, Fuzz> for Packet {
             fuzzing[f.clone() as usize] = false;
         }
 
-        if fuzzing[Fuzz::Version as usize] {
+        if fuzzing[PacketFuzz::Version as usize] {
             let mut tmp = packet.clone();
             tmp.version = (u8::from(tmp.version) + 1).into();
             res.push(tmp);
         }
 
         // fuzz flag
-        if fuzzing[Fuzz::Flag as usize] {
+        if fuzzing[PacketFuzz::Flag as usize] {
             let mut tmp = packet.clone();
             tmp.flag = (u8::from(tmp.flag) + 1).into();
             res.push(tmp);
         }
 
         // fuzz sync
-        if fuzzing[Fuzz::Sync as usize] {
+        if fuzzing[PacketFuzz::Sync as usize] {
             let mut tmp = packet.clone();
             tmp.sync += 1;
             res.push(tmp);
         }
 
         // fuzz option
-        if fuzzing[Fuzz::Option as usize] {
+        if fuzzing[PacketFuzz::Option as usize] {
             let mut tmp = packet.clone();
             tmp.option += 1;
             res.push(tmp);
         }
 
         // fuzz session
-        if fuzzing[Fuzz::Session as usize] {
+        if fuzzing[PacketFuzz::Session as usize] {
             let mut tmp = packet.clone();
             tmp.session += 1;
             res.push(tmp);
         }
 
         // fuzz room
-        if fuzzing[Fuzz::Room as usize] {
+        if fuzzing[PacketFuzz::Room as usize] {
             let mut tmp = packet.clone();
             tmp.room += 1;
             res.push(tmp);
