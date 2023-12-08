@@ -34,6 +34,7 @@ use ui::button::{
 };
 use ui::colors;
 use ui::text::waiting_text;
+use game::Game;
 
 // Main function
 #[no_mangle]
@@ -57,8 +58,6 @@ extern "C" fn main() {
         raylib::ChangeDirectory(raylib_str!("assets"));
 
         SetTargetFPS(60);
-
-
 
         TraceLog(
             TraceLogLevel_LOG_ERROR.try_into().unwrap(),
@@ -108,6 +107,9 @@ extern "C" fn main() {
         let mut want_join = false;
 
         let mut is_host = false;
+
+        let mut game_chosen = Game::Unknown;
+        let mut page_selection = 0;
 
         while !WindowShouldClose() {
             draw!({
@@ -197,25 +199,60 @@ extern "C" fn main() {
                                 colors::YELLOW
                             );
 
-                            let racer = button::racer(screen_height, screen_width);
-                            let snake = button::snake(screen_height, screen_width);
-                            let golf = button::golf(screen_height, screen_width);
+                            let game_id = 3*page_selection + 1;
 
-                            racer.draw();
-                            snake.draw();
-                            golf.draw();
+                            if Game::from(game_id+3) == Game::Unknown {
+                                let top = button::top(screen_height, screen_width, game::title(game_id));
+                                top.draw();
+                                if top.click() {
+                                    let game_chosen = Game::from(game_id);
+                                }
 
-                            /*if button::GAME().colision() {
-                                button::GAME().change_foreground_color(colors::BLUE);
-                            };*/
-                            if racer.click() {
-                                network.lock_room(network::Game::Racer).unwrap();
+                                let mid_game = Game::from(game_id+1);
+                                if mid_game != Game::Unknown {
+                                    let middle = button::mid(screen_height, screen_width, game::title(game_id+1));
+                                    middle.draw();
+                                    if middle.click() {
+                                        let game_chosen = Game::from(game_id+1);
+                                    }
+                                }
+
+                                let bottom_game = Game::from(game_id+2);
+                                if bottom_game != Game::Unknown {
+                                    let bottom = button::mid(screen_height, screen_width, game::title(game_id+1));
+                                    bottom.draw();
+                                    if bottom.click() {
+                                        let game_chosen = Game::from(game_id+2);
+                                    }
+                                }
+                                
+                            } else {
+                                let top = button::top(screen_height, screen_width, game::title(game_id));
+                                let middle = button::mid(screen_height, screen_width, game::title(game_id+1));
+                                let bottom = button::bottom(screen_height, screen_width, game::title(game_id+2));
+                                let next_page = button::next_page(screen_height, screen_width);
+
+                                top.draw();
+                                middle.draw();
+                                bottom.draw();
+                                next_page.draw();
+
+                                if top.click() {
+                                    let game_chosen = Game::from(game_id);
+                                }
+                                if middle.click() {
+                                    let game_chosen = Game::from(game_id+1);
+                                }
+                                if bottom.click() {
+                                    let game_chosen = Game::from(game_id+2);
+                                }
+
+                                if next_page.click() {
+                                    page_selection = page_selection + 1;
+                                }
                             }
-                            if snake.click() {
-                                network.lock_room(network::Game::Test).unwrap();
-                            }
-                            if golf.click() {
-                                network.lock_room(network::Game::Unknown).unwrap();
+                            if game_chosen != Game::Unknown{
+                                network.lock_room(game_chosen).unwrap();
                             }
                         } else {
                             waiting_text(screen_height, screen_width) 
@@ -256,8 +293,6 @@ extern "C" fn main() {
                         
                     }
                     network::Status::InGame => {
-                        // network.send(data);
-                        // main_game(receive(data));
                         break;
                     }
                 }
@@ -265,6 +300,7 @@ extern "C" fn main() {
 
             DrawFPS(10, 10);
         }
+        game_chosen.create_game().main_game(&mut network);
         game::racer::main_game(&mut network);
         CloseWindow();
     }
