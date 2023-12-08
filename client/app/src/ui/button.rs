@@ -199,7 +199,8 @@ pub fn start_game(screen_height: i32, screen_width: i32) -> Button {
     ) 
 }
 
-pub fn racer(screen_height: i32, screen_width: i32) -> Button {
+/// top button on game select
+pub fn top(screen_height: i32, screen_width: i32, text: String) -> Button {
     Button::new(
         raylib::Rectangle {
             x: ((screen_width as f32)*(1./5.)) as c_float,
@@ -208,12 +209,13 @@ pub fn racer(screen_height: i32, screen_width: i32) -> Button {
             height: ((screen_height as f32)*(1.5/13.)) as c_float,
         },
         Style::new(colors::WHITE, colors::GREEN),
-        Some(format!("Racer")),
+        Some(format!("{}", text)),
         1./8. * (screen_width as f32) as c_float,
     ) 
 }
 
-pub fn snake(screen_height: i32, screen_width: i32) -> Button {
+/// middle button on game select
+pub fn mid(screen_height: i32, screen_width: i32, text: String) -> Button {
     Button::new(
         raylib::Rectangle {
             x: ((screen_width as f32)*(1./5.)) as c_float,
@@ -222,12 +224,13 @@ pub fn snake(screen_height: i32, screen_width: i32) -> Button {
             height: ((screen_height as f32)*(1.5/13.)) as c_float,
         },
         Style::new(colors::WHITE, colors::GREEN),
-        Some(format!("Snake")),
+        Some(format!("{}", text)),
         1./9. * (screen_width as f32) as c_float,
     ) 
 }
 
-pub fn golf(screen_height: i32, screen_width: i32) -> Button {
+/// bottom button on game select
+pub fn bottom(screen_height: i32, screen_width: i32, text: String) -> Button {
     Button::new(
         raylib::Rectangle {
             x: ((screen_width as f32)*(1./5.)) as c_float,
@@ -236,7 +239,15 @@ pub fn golf(screen_height: i32, screen_width: i32) -> Button {
             height: ((screen_height as f32)*(1.5/13.)) as c_float,
         },
         Style::new(colors::WHITE, colors::GREEN),
-        Some(format!("Golf")),
+        Some(format!("{}", text)),
         1./6. * (screen_width as f32) as c_float,
     ) 
+}
+
+/// button "next page" on game select
+pub fn next_page(screen_height: i32, screen_width: i32) -> Button {
+    Button::new_ratio(
+        5.0 * (1.0/(7.0)) , 0.5 + 7.0 * ((1.0/2.0) * (1.0 / 9.0)), (1.0/(7.0)), ((1.0/2.0) * (1.0 / 9.0)),
+        Style::new(colors::WHITE, colors::BLACK), Some("->".to_string()), screen_width as f32, screen_height as f32
+    )
 }
