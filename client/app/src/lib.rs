@@ -118,6 +118,8 @@ extern "C" fn main() {
 
         let mut is_host = false;
 
+        let mut game_id = network::Game::Unknown;
+
         while !WindowShouldClose() {
             draw!({
                 ClearBackground(colors::BLACK);
@@ -263,17 +265,19 @@ extern "C" fn main() {
                             }
                         }
                     }
-                    network::Status::InGame => {
-                        // network.send(data);
-                        // main_game(receive(data));
+                    network::Status::InGame(game) => {
+                        game_id = game.into();
                         break;
                     }
                 }
             });
-
             DrawFPS(10, 10);
         }
-        game::maze_fight::main_game(&mut network);
+        match game_id {
+            network::Game::MazeFight => game::maze_fight::main_game(&mut network),
+            _ => {},
+        }
+
         CloseWindow();
     }
 

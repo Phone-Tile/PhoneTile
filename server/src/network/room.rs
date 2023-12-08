@@ -129,7 +129,7 @@ impl Room {
         while index < self.players.len() {
             match self.players[index]
                 .sender
-                .send(pipe::GameMessage::launch_message())
+                .send(pipe::GameMessage::launch_message(self.game_id.into()))
             {
                 Ok(_) => index += 1,
                 Err(e) => {
