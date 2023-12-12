@@ -317,19 +317,19 @@ fn recv_data(
 }
 
 unsafe fn draw_cars(car: (f64, f64), dir: (f64, f64)) {
-    let theta = if (dir.1 != 0){
+    let theta = if (dir.1 != 0.){
         let rapport = dir.0/dir.1;
-        rapport.arctan()
+        rapport.atan()
     }
     else{
-        if (dir.0 > 0){
+        if (dir.0 > 0.){
             std::f64::consts::PI/2.
         }
         else {
             -std::f64::consts::PI/2.
         }
     };
-    let rec = Rectangle(car.0 as f32, car.1 as f32, 40., 60.);
+    let rec = Rectangle{x:car.0 as f32, y:car.1 as f32, width:40., height:60.};
     DrawRectanglePro(
         rec,
         Vector2{x: rec.x - rec.width/2, y: rec.y - rec.height/2},
@@ -372,7 +372,7 @@ pub unsafe fn main_game(network: &mut network::Network) {
                 a: 255,
             });
             draw_bez(&buffer_bezier);
-            buffer_cars.iter().zip(buffer_directions).for_each(|(car,dir)| draw_cars(*car, *dir));
+            buffer_cars.iter().zip(buffer_directions).for_each(|(car,dir)| draw_cars(*car, dir));
         });
         send_data(network);
     }
