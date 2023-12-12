@@ -127,7 +127,16 @@ impl Game {
     pub fn get_map(&self) -> &Vec<Bezier> {
         &self.map
     }
-    pub fn get_cars(&self) -> Vec<(f64, f64)> {
+
+    pub fn get_cars(&self) -> &Vec<Vehicle> {
+        &self.cars
+    }
+
+    pub fn get_car_dir(&self, car : &Vehicle) -> (f64, f64){
+        self.map[car.curve_index].compute_grad(car.t).into_tuple()
+    }
+
+    pub fn get_cars_pos(&self) -> Vec<(f64, f64)> {
         self.cars
             .iter()
             .map(|c| self.map[c.curve_index].compute_curve(c.t).into_tuple())
