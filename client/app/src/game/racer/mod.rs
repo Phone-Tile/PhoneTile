@@ -341,6 +341,8 @@ pub unsafe fn main_game(network: &mut network::Network) {
     let mut buffer_bezier = Vec::new();
     while !WindowShouldClose() {
         recv_data(network, &mut buffer_cars, &mut buffer_bezier);
+        println!("I've got cars in my pocket\n{:?}\n", buffer_cars);
+        println!("And some curves too\n[:?}\n\n", buffer_bezier);
         draw!({
             ClearBackground(Color {
                 r: 0,
