@@ -84,10 +84,10 @@ $(RUST_APP_NAME).apk: binaries android/$(RUST_APP_NAME).keystore
 	mkdir -p apk/lib/x86_64
 	mkdir -p apk/lib/x86
 	mkdir -p apk/lib/armeabi-v7a
-	mkdir -p apk/lib/aarch64
+	mkdir -p apk/lib/arm64-v8a
 	cp target/x86_64-linux-android/$(MODE)/lib$(RUST_APP_NAME).so apk/lib/x86_64/lib$(RUST_APP_NAME).so
 	cp target/i686-linux-android/$(MODE)/lib$(RUST_APP_NAME).so apk/lib/x86/lib$(RUST_APP_NAME).so
-	cp target/aarch64-linux-android/$(MODE)/lib$(RUST_APP_NAME).so apk/lib/aarch64/lib$(RUST_APP_NAME).so
+	cp target/aarch64-linux-android/$(MODE)/lib$(RUST_APP_NAME).so apk/lib/arm64-v8a/lib$(RUST_APP_NAME).so
 	cp target/armv7-linux-androideabi/$(MODE)/lib$(RUST_APP_NAME).so apk/lib/armeabi-v7a/lib$(RUST_APP_NAME).so
 
 	$(BUILD_TOOLS)/aapt package -f -F temp.apk \
