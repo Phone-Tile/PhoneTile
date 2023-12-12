@@ -143,7 +143,7 @@ impl Room {
 
         // Here we will put the interface code with the client
         match self.game_id {
-            client::Game::Racer => crate::game::racer::racer(&mut self.players),
+            client::Game::Racer => crate::game::racer::racer(&mut self.players, self.target.as_str()),
             client::Game::MazeFight => crate::game::maze_fight::maze_fight(&mut self.players),
             client::Game::Test => test_function(&mut self.players),
             client::Game::Unknown => Ok(()),

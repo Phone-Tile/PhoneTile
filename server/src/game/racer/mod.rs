@@ -80,24 +80,33 @@ fn recv_data(players: &mut [player::Player]) -> Vec<bool> {
     phone_accel
 }
 
-pub fn racer(players: &mut [player::Player]) -> Result<(), std::io::Error> {
+use crate::network::client::Game;
+use log::{info, warn};
+pub fn racer(players: &mut [player::Player], truc1: &str) -> Result<(), std::io::Error> {
     let mut dimensions = Vec::new();
+    println!("I entered the dimensions !");
     for player in players.iter() {
         dimensions.push((player.physical_width as f64, player.physical_height as f64))
     }
+    println!("I leave the dimension maker !");
+    info!(target: truc1, "Finished getting dimensions, {} phones", dimensions.len());
     let mut game = match game::Game::new(vec![], players.len(), &dimensions) {
         Ok(game) => game,
         Err(err) => {
             panic!("{:?}", err);
         }
     };
+    println!("I 've created the GAMEEEE !!!!");
+    info!(target: truc1, "Game defined");
     loop {
-        // let raw_data = encode_data(&game);
+        println!("Looping is my life :)");
         send_data(players, &game);
+        info!(target: truc1, "data sent");
         let phone_accel = recv_data(players);
         for (i_p, _) in players.iter().enumerate() {
             game.update_position(i_p, phone_accel[i_p]);
         }
+        info!(target: truc1, "things done");
         thread::sleep(time::Duration::from_millis(20));
     }
     Ok(())
