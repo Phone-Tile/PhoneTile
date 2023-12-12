@@ -372,7 +372,7 @@ pub unsafe fn main_game(network: &mut network::Network) {
                 a: 255,
             });
             draw_bez(&buffer_bezier);
-            buffer_cars.iter().zip(buffer_directions).for_each(|(car,dir)| draw_cars(*car, dir));
+            buffer_cars.iter().zip(buffer_directions.clone()).for_each(|(car,dir)| draw_cars(*car, dir));
         });
         send_data(network);
     }
