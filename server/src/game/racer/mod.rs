@@ -82,7 +82,7 @@ fn recv_data(players: &mut [player::Player]) -> Vec<bool> {
 
 // use crate::network::client::Game;
 // use log::{info, warn};
-pub fn racer(players: &mut [player::Player], truc1: &str) -> Result<(), std::io::Error> {
+pub fn racer(players: &mut [player::Player]) -> Result<(), std::io::Error> {
     let mut dimensions = Vec::new();
     // println!("I entered the dimensions !");
     for player in players.iter() {

@@ -264,6 +264,7 @@ extern "C" fn main() {
                         }
                     }
                     network::Status::InGame => {
+                        println!("I'm in game!!!");
                         // network.send(data);
                         // main_game(receive(data));
                         break;
@@ -273,7 +274,8 @@ extern "C" fn main() {
 
             DrawFPS(10, 10);
         }
-        game::maze_fight::main_game(&mut network);
+        println!("I'm in game!!!");
+        game::racer::main_game(&mut network);
         CloseWindow();
     }
 
