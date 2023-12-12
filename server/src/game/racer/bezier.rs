@@ -245,18 +245,22 @@ impl Bezier {
                     + dimensions[*phone_idx].1 / 2.;
             } else {
                 control_1_1 =
-                    control_1.0 * (dimensions[*phone_idx].0 - 2. * eps) + widths[*phone_idx] + eps;
+                    control_1.0 * (dimensions[*phone_idx].0) + widths[*phone_idx] + eps;
                 control_1_2 = control_1.1 * dimensions[*phone_idx].1 / 2. + offset;
             }
             if output.1 > dimensions[*phone_idx].1 / 2. + offset {
                 control_2_1 =
-                    control_2.0 * (dimensions[*phone_idx].0 - 2. * eps) + widths[*phone_idx] + eps;
+                    control_2.0 * (dimensions[*phone_idx].0) + widths[*phone_idx] + eps;
                 control_2_2 = control_2.1 * dimensions[*phone_idx].1 / 2.
                     + offset
                     + dimensions[*phone_idx].1 / 2.;
+            } else if *phone_idx == 0 {
+                control_2_1 =
+                    control_2.0 * (dimensions[0].0);
+                control_2_2 = control_2.1 * dimensions[*phone_idx].1 / 2. + offset;
             } else {
                 control_2_1 =
-                    control_2.0 * (dimensions[*phone_idx].0 - 2. * eps) + widths[*phone_idx] + eps;
+                    control_2.0 * (dimensions[*phone_idx].0) + widths[*phone_idx] + eps;
                 control_2_2 = control_2.1 * dimensions[*phone_idx].1 / 2. + offset;
             }
 

@@ -142,9 +142,9 @@ impl Game {
     }
 
     pub fn update_position(&mut self, car_idx: usize, accelerate: bool) {
-        // Random bullshit, GO! v(t+dt) = (a-f*v(t)^2)*dt
+        // Random bullshit, GO! v(t+dt) = (a-f*v(t))*dt
         self.cars[car_idx].speed += ((if accelerate { ACC_RATE } else { 0. })
-            - FRICTION * self.cars[car_idx].speed * self.cars[car_idx].speed)
+            - FRICTION * self.cars[car_idx].speed /* self.cars[car_idx].speed*/)
             * DT;
 
         let mut new_t = self.cars[car_idx].t;
