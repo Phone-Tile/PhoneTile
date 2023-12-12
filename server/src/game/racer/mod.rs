@@ -10,14 +10,20 @@ use std::{thread, time};
 fn encode_data(game: &game::Game, player: &player::Player) -> Vec<u8> {
     let mut raw_data: Vec<u8> = Vec::new();
     let map = game.get_map();
+    let cars_pos = game.get_cars_pos();
     let cars = game.get_cars();
-    raw_data.push(8 * 2 * (cars.len() as u8));
-    for car in cars.iter() {
+    raw_data.push(8 * 4 * (cars_pos.len() as u8));
+    for (i, car) in cars_pos.iter().enumerate() {
         let (x, y) = player.to_local_coordinates(car.0 as f32, car.1 as f32);
         let xb = f64::to_be_bytes(x as f64);
         let yb = f64::to_be_bytes(y as f64);
+        let ori = game.get_car_dir(&cars[i]);
+        let dir1 = f64::to_be_bytes(ori.0);
+        let dir2 = f64::to_be_bytes(ori.1);
         raw_data.extend(xb);
         raw_data.extend(yb);
+        raw_data.extend(dir1);
+        raw_data.extend(dir2);
     }
     for bezier in map.iter() {
         let p = bezier.get_points();

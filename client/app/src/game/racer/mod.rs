@@ -254,6 +254,7 @@ fn recv_data(
     network: &mut network::Network,
     buffer_cars: &mut Vec<(f64, f64)>,
     buffer_bezier: &mut Vec<(f64, f64)>,
+    buffer_directions: &mut Vec<(f64, f64)>,
 ) {
     let mut update_data = [0_u8; packet::MAX_DATA_SIZE];
     let mut new_data = update_data.clone();
@@ -266,7 +267,8 @@ fn recv_data(
     }
     if N > 0 {
         while buffer_cars.len() < (new_data[0]/16).into() {
-            buffer_cars.push((0., 0.))
+            buffer_cars.push((0., 0.));
+            buffer_directions.push((0., 0.))
         }
         while buffer_bezier.len() < ((N - new_data[0] as usize) / 16) {
             buffer_bezier.push((0., 0.))
@@ -275,11 +277,18 @@ fn recv_data(
         let bezier = &new_data[(new_data[0]+1).into()..N];
         for car_idx in 0..(cars.len() / 16) {
             let mut temp_cars = [0_u8; 8];
-            temp_cars.copy_from_slice(&cars[(16 * car_idx)..(16 * car_idx + 8)]);
+            temp_cars.copy_from_slice(&cars[(32 * car_idx)..(32 * car_idx + 8)]);
             let x = f64::from_be_bytes(temp_cars);
-            temp_cars.copy_from_slice(&cars[(16 * car_idx + 8)..(16 * car_idx + 16)]);
+            temp_cars.copy_from_slice(&cars[(32 * car_idx + 8)..(32 * car_idx + 16)]);
             let y = f64::from_be_bytes(temp_cars);
             buffer_cars[car_idx] = (x, y);
+
+            let mut temp_dir = [0_u8; 8];
+            temp_dir.copy_from_slice(&cars[(32 * car_idx + 16)..(32 * car_idx + 24)]);
+            let dir1 = f64::from_be_bytes(temp_dir);
+            temp_dir.copy_from_slice(&cars[(32 * car_idx + 24)..(32 * car_idx + 32)]);
+            let dir2 = f64::from_be_bytes(temp_dir);
+            buffer_directions[car_idx] = (dir1, dir2);
         }
         for bezier_idx in 0..(bezier.len() / 64) {
             let mut temp_cars = [0_u8; 8];
@@ -307,11 +316,24 @@ fn recv_data(
     }
 }
 
-unsafe fn draw_cars(car: (f64, f64)) {
-    DrawCircle(
-        car.0 as i32,
-        car.1 as i32,
-        40.0,
+unsafe fn draw_cars(car: (f64, f64), dir: (f64, f64)) {
+    let theta = if (dir.1 != 0){
+        let rapport = dir.0/dir.1;
+        rapport.arctan()
+    }
+    else{
+        if (dir.0 > 0){
+            std::f64::consts::PI/2.
+        }
+        else {
+            -std::f64::consts::PI/2.
+        }
+    };
+    let rec = Rectangle(car.0 as f32, car.1 as f32, 40., 60.);
+    DrawRectanglePro(
+        rec,
+        Vector2{x: rec.x - rec.width/2, y: rec.y - rec.height/2},
+        theta,
         Color {
             r: 255,
             g: 0,
@@ -339,8 +361,9 @@ pub unsafe fn main_game(network: &mut network::Network) {
     let (width, height) = (GetScreenWidth(), GetScreenHeight());
     let mut buffer_cars = Vec::new();
     let mut buffer_bezier = Vec::new();
+    let mut buffer_directions = Vec::new();
     while !WindowShouldClose() {
-        recv_data(network, &mut buffer_cars, &mut buffer_bezier);
+        recv_data(network, &mut buffer_cars, &mut buffer_bezier, &mut buffer_directions);
         draw!({
             ClearBackground(Color {
                 r: 0,
@@ -348,8 +371,8 @@ pub unsafe fn main_game(network: &mut network::Network) {
                 b: 0,
                 a: 255,
             });
-            buffer_cars.iter().for_each(|car| draw_cars(*car));
             draw_bez(&buffer_bezier);
+            buffer_cars.iter().zip(buffer_directions).for_each(|(car,dir)| draw_cars(*car, *dir));
         });
         send_data(network);
     }
