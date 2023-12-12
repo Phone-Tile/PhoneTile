@@ -6,7 +6,7 @@ use plotters::prelude::*;
 #[cfg(debug_assertions)]
 use tqdm::tqdm;
 
-const ACC_RATE: f64 = 20.;
+const ACC_RATE: f64 = 25.;
 const DECC_RATE: f64 = -1.2;
 const SPEED_EXCESS: f64 = 0.3;
 const FRICTION: f64 = 2.;
@@ -142,9 +142,9 @@ impl Game {
     }
 
     pub fn update_position(&mut self, car_idx: usize, accelerate: bool) {
-        // Random bullshit, GO! v(t+dt) = (a-f*v(t))*dt
+        // Random bullshit, GO! v(t+dt) = (a-f*v(t)^2)*dt
         self.cars[car_idx].speed += ((if accelerate { ACC_RATE } else { 0. })
-            - FRICTION * self.cars[car_idx].speed/* self.cars[car_idx].speed*/)
+            - FRICTION * self.cars[car_idx].speed * self.cars[car_idx].speed)
             * DT;
 
         let mut new_t = self.cars[car_idx].t;

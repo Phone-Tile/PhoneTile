@@ -26,7 +26,7 @@ where
 }
 
 /// Even though Vector and Points are the same in practice, we tend to see them as two separate things.
-/// We will use the following function with the type annotation of a Vector only.
+/// We will usef the following function with the type annotation of a Vector only.
 pub type Vector = Point;
 impl Vector {
     #[inline]
@@ -221,7 +221,7 @@ impl Bezier {
                 // Make the car spend more time on last phone x = (b-a) + x*a/b
                 control_1.0 = 0.5 * (control_1.0 + 1.);
                 control_2.0 = 0.5 * (control_2.0 + 1.);
-            } else if i == len {
+            } else if i == io_points.len()-1 {
                 // no random for the last control point in order to loop
                 control_2 = control_last_right;
             }
