@@ -1,7 +1,6 @@
 use std::convert::Into;
 use std::convert::TryFrom;
 use std::fmt::Display;
-use std::hash::BuildHasher;
 use std::io::{Error, ErrorKind, Read, Write};
 use std::net::TcpStream;
 use std::thread;
@@ -219,10 +218,10 @@ impl Packet {
     ) -> Packet {
         let mut data = [0_u8; MAX_DATA_SIZE];
         let size = raw_data.len();
-        if (size > MAX_DATA_SIZE) {
+        if size > MAX_DATA_SIZE {
             panic!("Trying to build a packet too large !");
         }
-        if (size > 0) {
+        if size > 0 {
             data[..size].copy_from_slice(raw_data);
         }
         Packet {

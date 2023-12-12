@@ -77,12 +77,12 @@ impl GameMessage {
         }
     }
 
-    pub fn launch_message() -> Self {
+    pub fn launch_message(game_id: u16) -> Self {
         GameMessage {
             flag: GameMessageFlag::Launch,
             room_token: 0,
             sender: None,
-            rank: None,
+            rank: Some(game_id),
             size: 0,
             data: None,
         }

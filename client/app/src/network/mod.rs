@@ -1,6 +1,6 @@
 use std::fmt::Display;
-use std::io::{Error, ErrorKind, Read, Write};
-use std::net::{TcpStream, ToSocketAddrs, SocketAddr};
+use std::io::{Error, ErrorKind};
+use std::net::{SocketAddr, TcpStream};
 use std::time::Duration;
 use std::{thread, time};
 use crate::game::{Game};
@@ -25,7 +25,7 @@ pub enum Status {
     Disconnected,
     InRoom,
     InLockRoom(u8),
-    InGame,
+    InGame(u16),
 }
 
 //////////////////////////////////////////////
@@ -40,6 +40,7 @@ pub struct Network {
     stream: TcpStream,
     session_token: u16,
     room_token: u16,
+    game_id: u16,
     status: Status,
 }
 
@@ -54,7 +55,7 @@ impl Network {
 
     /// Connect to the server, you must do this action BEFORE ANYTHING ELSE
     pub fn connect(
-        address : &SocketAddr,
+        address: &SocketAddr,
         physical_height: f32,
         physical_width: f32,
         window_height: u32,
@@ -67,6 +68,7 @@ impl Network {
                     stream,
                     session_token: 0,
                     room_token: 0,
+                    game_id: 0,
                     status: Status::Connected,
                 };
                 network.init_handshake(
@@ -120,6 +122,7 @@ impl Network {
     /// The position of each user is given from this point when the get_status is triggered
     /// THIS FUNCTION WILL WORK ONLY IF create_room HAS BEEN CALLED BEFORE THAT
     pub fn lock_room(&mut self, game_id: Game) -> Result<(), Error> {
+        self.game_id = game_id.into();
         packet::Packet::new(
             packet::Flag::Lock,
             0,
@@ -145,7 +148,7 @@ impl Network {
         .send_packet(&mut self.stream)
         {
             Ok(_) => {
-                self.status = Status::InGame;
+                self.status = Status::InGame(self.game_id);
                 Ok(())
             }
             Err(e) => Err(e),
@@ -198,8 +201,8 @@ impl Network {
                 None => self.status.clone(),
             },
             Status::InLockRoom(_) => match packet::Packet::try_recv_packet(&mut self.stream) {
-                Some(_) => {
-                    self.status = Status::InGame;
+                Some(packet) => {
+                    self.status = Status::InGame(packet.option);
                     self.status.clone()
                 }
                 None => self.status.clone(),
