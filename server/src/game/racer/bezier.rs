@@ -189,7 +189,7 @@ impl Bezier {
     /// Transform this list of pairs into a list of Bezier curves with starting and ending points corresponding to each pair.
     /// The pairs (ok, ik+1) correspond to temp curves that are used to generate smooth transitions between two curves by enforcing their control point to be the symmetry of the surronding curves.
     ///
-    pub fn random_map(dimensions: &Vec<(f64, f64)>, io_points: Data) -> Vec<Self> {
+    pub fn random_map_pas_si_random(dimensions: &Vec<(f64, f64)>, io_points: Data) -> Vec<Self> {
         let mut map = vec![];
         let mut width = 0.;
         map.push(Bezier::new(
@@ -212,8 +212,8 @@ impl Bezier {
         width += dimensions[dimensions.len()-2].0;
         map.push(Bezier::new(
             Point::from((width, dimensions[dimensions.len()-1].1/3.)),
-            Point::from((width + dimensions[dimensions.len()-1].0, dimensions[dimensions.len()-1].1/3.*2.)),
             Point::from((width + dimensions[dimensions.len()-1].0, dimensions[dimensions.len()-1].1/3.)),
+            Point::from((width + dimensions[dimensions.len()-1].0, dimensions[dimensions.len()-1].1/3.*2.)),
             Point::from((width, dimensions[dimensions.len()-1].1/3.*2.)),
         ));
 
@@ -229,7 +229,95 @@ impl Bezier {
         }
         map 
     }
+
     pub fn random_map2(dimensions: &Vec<(f64, f64)>, io_points: Data) -> Vec<Self> {
+        let mut rng = rand::rngs::StdRng::seed_from_u64(41);
+        let mut map = vec![];
+        let mut width = 0.;
+        let mut control_screen_start_bot = rng.gen::<(f64, f64)>();
+        let mut control_screen_start_top = rng.gen::<(f64, f64)>();
+        // spend more time on the first screen
+        control_screen_start_bot.0 *= 0.5;
+        control_screen_start_top.0 *= 0.5;
+        // Transform into real size
+        control_screen_start_bot.0 *= dimensions[0].0;
+        control_screen_start_top.0 *= dimensions[0].0;
+        control_screen_start_bot.1 *= dimensions[0].1;
+        control_screen_start_top.1 *= dimensions[0].1;
+
+        map.push(Bezier::new(
+            Point::from((dimensions[0].0, dimensions[0].1/3.*2.)),
+            Point::from(control_screen_start_top),
+            Point::from(control_screen_start_bot),
+            Point::from((dimensions[0].0, dimensions[0].1/3.)),
+        ));
+
+        // Do the same for every intermediate phones remembering the previous random control point and taking the symmetry 
+        // as the new control point in order to keep a infinitely derivable curves
+        let mut previous_point = control_screen_start_bot;
+        for i in 0..dimensions.len()-2 {
+            width += dimensions[i].0;
+            let mut next_control_point = rng.gen::<(f64, f64)>();
+            next_control_point.0 *= dimensions[i+1].0;
+            next_control_point.1 *= dimensions[i+1].1;
+
+            // Avoid collisions by choosing each control point in a separated area (at the bottom for the moment)
+            next_control_point.1 *= 0.5;
+            
+            map.push(Bezier::new(
+                Point::from((width, dimensions[i+1].1/3.)),
+                Point::from(previous_point).symmetry(Point::from((width, dimensions[i+1].1/3.))),
+                Point::from(next_control_point),
+                Point::from((width + dimensions[i+1].0, dimensions[i+1].1/3.)),
+            ));
+            previous_point = next_control_point;
+        }
+        width += dimensions[dimensions.len()-2].0;
+        
+        let mut next_control_point = rng.gen::<(f64, f64)>();
+        next_control_point.0 *= dimensions[dimensions.len()-1].0;
+        next_control_point.1 *= dimensions[dimensions.len()-1].1;
+        
+        // change it to make the circuit spend more time on the last phone
+        previous_point.0 = 0.5 * (1. + previous_point.0);
+
+        map.push(Bezier::new(
+            Point::from((width, dimensions[dimensions.len()-1].1/3.)),
+            Point::from(previous_point).symmetry(Point::from((width, dimensions[dimensions.len()-1].1/3.))),
+            Point::from(next_control_point),
+            Point::from((width, dimensions[dimensions.len()-1].1/3.*2.)),
+        ));
+        previous_point = next_control_point;
+
+        for i in dimensions.len()-1..1 {
+            width -= dimensions[i].0;
+            width += dimensions[i].0;
+            let mut next_control_point = rng.gen::<(f64, f64)>();
+            next_control_point.0 *= dimensions[i+1].0;
+            next_control_point.1 *= dimensions[i+1].1;
+
+            // Avoid collisions by choosing each control point in a separated area (at the top now)
+            next_control_point.1 = 0.5 * (next_control_point.1 + 1.);
+            
+            map.push(Bezier::new(
+                Point::from((width + dimensions[i].0, dimensions[i].1/3.*2.)),
+                Point::from(previous_point).symmetry(Point::from((width + dimensions[i].0, dimensions[i].1/3.*2.))),
+                Point::from(next_control_point),
+                Point::from((width, dimensions[i].1/3.*2.)),
+            ));
+            previous_point = next_control_point;
+        }
+        // Join the first and last curves together with smoothness
+        map.push(Bezier::new(
+            Point::from((width + dimensions[1].0, dimensions[1].1/3.*2.)),
+            Point::from(previous_point).symmetry(Point::from((width + dimensions[1].0, dimensions[1].1/3.*2.))),
+            Point::from(control_screen_start_top).symmetry(Point::from((width + dimensions[0].0, dimensions[0].1/3.*2.))),
+            Point::from((width, dimensions[0].1/3.*2.)),
+        ));
+        map 
+    }
+
+    pub fn random_map(dimensions: &Vec<(f64, f64)>, io_points: Data) -> Vec<Self> {
         let mut rng = rand::rngs::StdRng::seed_from_u64(41);
 
         let (_total_width, total_height) =
