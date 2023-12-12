@@ -190,6 +190,46 @@ impl Bezier {
     /// The pairs (ok, ik+1) correspond to temp curves that are used to generate smooth transitions between two curves by enforcing their control point to be the symmetry of the surronding curves.
     ///
     pub fn random_map(dimensions: &Vec<(f64, f64)>, io_points: Data) -> Vec<Self> {
+        let mut map = vec![];
+        let mut width = 0.;
+        map.push(Bezier::new(
+            Point::from((dimensions[0].0, dimensions[0].1/3.*2.)),
+            Point::from((0, dimensions[0].1/3.*2.)),
+            Point::from((0, dimensions[0].1/3.)),
+            Point::from((dimensions[0].0, dimensions[0].1/3.)),
+        ));
+
+        for i in 0..dimensions.len()-2 {
+            width += dimensions[i].0;
+            
+            map.push(Bezier::new(
+                Point::from((width, dimensions[i+1].1/3.)),
+                Point::from(((width + dimensions[i+1].0)/2., dimensions[i+1].1/3.)),
+                Point::from(((width + dimensions[i+1].0)/2., dimensions[i+1].1/3.)),
+                Point::from((width + dimensions[i+1].0, dimensions[i+1].1/3.)),
+            ));
+        }
+        width += dimensions[dimensions.len()-2].0;
+        map.push(Bezier::new(
+            Point::from((width, dimensions[dimensions.len()-1].1/3.)),
+            Point::from((width + dimensions[dimensions.len()-1].0, dimensions[dimensions.len()-1].1/3.*2.)),
+            Point::from((width + dimensions[dimensions.len()-1].0, dimensions[dimensions.len()-1].1/3.)),
+            Point::from((width, dimensions[dimensions.len()-1].1/3.*2.)),
+        ));
+
+        for i in dimensions.len()-1..1 {
+            width -= dimensions[i].0;
+            
+            map.push(Bezier::new(
+                Point::from((width + dimensions[i].0, dimensions[i].1/3.*2.)),
+                Point::from(((width + dimensions[i].0)/2., dimensions[i].1/3.*2.)),
+                Point::from(((width + dimensions[i].0)/2., dimensions[i].1/3.*2.)),
+                Point::from((width, dimensions[i].1/3.*2.)),
+            ));
+        }
+        map 
+    }
+    pub fn random_map2(dimensions: &Vec<(f64, f64)>, io_points: Data) -> Vec<Self> {
         let mut rng = rand::rngs::StdRng::seed_from_u64(41);
 
         let (_total_width, total_height) =
