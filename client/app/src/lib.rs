@@ -300,7 +300,6 @@ extern "C" fn main() {
 
             DrawFPS(10, 10);
         }
-        game_chosen.create_game().main_game(&mut network);
         game::racer::main_game(&mut network);
         CloseWindow();
     }
