@@ -275,19 +275,17 @@ fn recv_data(
         }
         let cars = &new_data[1..(new_data[0]+1).into()];
         let bezier = &new_data[(new_data[0]+1).into()..N];
-        for car_idx in 0..(cars.len() / 16) {
+        for car_idx in 0..(cars.len() / 32) {
             let mut temp_cars = [0_u8; 8];
             temp_cars.copy_from_slice(&cars[(32 * car_idx)..(32 * car_idx + 8)]);
             let x = f64::from_be_bytes(temp_cars);
             temp_cars.copy_from_slice(&cars[(32 * car_idx + 8)..(32 * car_idx + 16)]);
             let y = f64::from_be_bytes(temp_cars);
             buffer_cars[car_idx] = (x, y);
-
-            let mut temp_dir = [0_u8; 8];
-            temp_dir.copy_from_slice(&cars[(32 * car_idx + 16)..(32 * car_idx + 24)]);
-            let dir1 = f64::from_be_bytes(temp_dir);
-            temp_dir.copy_from_slice(&cars[(32 * car_idx + 24)..(32 * car_idx + 32)]);
-            let dir2 = f64::from_be_bytes(temp_dir);
+            temp_cars.copy_from_slice(&cars[(32 * car_idx + 16)..(32 * car_idx + 24)]);
+            let dir1 = f64::from_be_bytes(temp_cars);
+            temp_cars.copy_from_slice(&cars[(32 * car_idx + 24)..(32 * car_idx + 32)]);
+            let dir2 = f64::from_be_bytes(temp_cars);
             buffer_directions[car_idx] = (dir1, dir2);
         }
         for bezier_idx in 0..(bezier.len() / 64) {
