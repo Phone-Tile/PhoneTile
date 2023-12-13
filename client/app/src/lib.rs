@@ -309,7 +309,7 @@ extern "C" fn main() {
             });
             DrawFPS(10, 10);
         }
-        game::racer::main_game(&mut network);
+        game::maze_fight::main_game(&mut network);
 
         /* 
         match game_chosen {
