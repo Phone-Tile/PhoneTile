@@ -2,14 +2,11 @@ use std::fmt::Display;
 use std::io::{Error, ErrorKind};
 use std::net::{SocketAddr, TcpStream};
 use std::time::Duration;
-use std::{thread, time};
-use crate::game::{Game};
+use crate::game::Game;
 
 pub mod packet;
 
 /// All of those functions are completely non-blocking
-
-
 
 //////////////////////////////////////////////
 ///
