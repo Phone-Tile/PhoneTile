@@ -143,13 +143,12 @@ impl Room {
 
         // Here we will put the interface code with the client
         match self.game_id {
-            client::Game::Racer => crate::game::racer::racer(&self.players),
-            client::Game::Snake => {}
-            client::Game::MazeFight => crate::game::maze_fight::maze_fight(&mut self.players)?,
+            client::Game::Racer => crate::game::racer::racer(&mut self.players),
+            client::Game::Snake => Ok(()),
+            client::Game::MazeFight => crate::game::maze_fight::maze_fight(&mut self.players),
             client::Game::Test => test_function(&mut self.players),
-            client::Game::Unknown => {}
+            client::Game::Unknown => Ok(()),
         }
-        Ok(())
     }
 
     // TODO: might be usefull to warn the other threads before dropping the thread
@@ -248,7 +247,7 @@ impl Room {
 ///
 //////////////////////////////////////////////
 
-fn test_function(players: &mut Vec<player::Player>) {
+fn test_function(players: &mut Vec<player::Player>) -> Result<(), Error> {
     let mut buffer = [0_u8; packet::MAX_DATA_SIZE];
     loop {
         // let mut p1 = &mut players[0];
@@ -266,4 +265,5 @@ fn test_function(players: &mut Vec<player::Player>) {
         }
         thread::sleep(time::Duration::from_millis(10));
     }
+    Ok(())
 }

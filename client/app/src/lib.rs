@@ -323,13 +323,6 @@ fn main_rust() {
             DrawFPS(10, 10);
         }
         game::maze_fight::main_game(&mut network);
-
-        /* 
-        match game_chosen {
-            Game::MazeFight => game::maze_fight::main_game(&mut network),
-            _ => {},
-        }*/
-
         CloseWindow();
     }
 
