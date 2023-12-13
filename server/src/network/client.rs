@@ -53,6 +53,7 @@ impl Display for Game {
             Game::Racer => write!(f, "Racer"),
             Game::Snake => write!(f, "Snake"),
             Game::MazeFight => write!(f, "Maze-Fight"),
+            Game::Snake => write!(f, "Snake"),
             Game::Test => write!(f, "Test"),
             Game::Unknown => write!(f, "Unknown"),
         }

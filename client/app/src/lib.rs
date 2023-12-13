@@ -3,6 +3,7 @@ use std::ffi::{c_char, c_int};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::str::FromStr;
 use std::time;
+use std::thread;
 
 extern crate raylib;
 use raylib::*;
@@ -135,7 +136,7 @@ fn main_rust() {
         let mut game_chosen = Game::Unknown;
         let mut page_selection = 0;
 
-        while !WindowShouldClose() {
+        'main: while !WindowShouldClose() {
             draw!({
                 ClearBackground(colors::BLACK);
 
@@ -276,6 +277,7 @@ fn main_rust() {
                             }
                             if game_chosen != Game::Unknown{
                                 network.lock_room(game_chosen).unwrap();
+                                thread::sleep(time::Duration::from_millis(100));
                             }
                         } else {
                             waiting_text(screen_height, screen_width)
@@ -316,19 +318,18 @@ fn main_rust() {
                     }
                     network::Status::InGame(game_id) => {
                         game_chosen = Game::from(game_id);
-                        break;
+                        break 'main;
                     }
                 }
             });
             DrawFPS(10, 10);
         }
-        game::maze_fight::main_game(&mut network);
 
-        /* 
         match game_chosen {
+            Game::Snake => game::snake::main_game(&mut network),
             Game::MazeFight => game::maze_fight::main_game(&mut network),
             _ => {},
-        }*/
+        }
 
         CloseWindow();
     }
