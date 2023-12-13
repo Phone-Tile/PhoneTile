@@ -330,7 +330,7 @@ unsafe fn draw_cars(car: (f64, f64), dir: (f64, f64)) {
     let rec = Rectangle{x:car.0 as f32, y:car.1 as f32, width:40., height:60.};
     DrawRectanglePro(
         rec,
-        Vector2{x: rec.x - rec.width/2., y: rec.y - rec.height/2.},
+        Vector2{x: rec.width/2., y: rec.height/2.},
         theta as f32,
         Color {
             r: 255,
