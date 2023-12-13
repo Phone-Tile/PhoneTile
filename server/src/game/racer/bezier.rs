@@ -222,14 +222,14 @@ impl Bezier {
             Point::from((width, dimensions[dimensions.len() - 1].1 / 3. * 2.)),
         ));
 
-        for i in dimensions.len() - 1..1 {
-            width -= dimensions[i].0;
+        for dim in dimensions.iter().rev().take(1).skip(dimensions.len() - 1) {
+            width -= dim.0;
 
             map.push(Bezier::new(
-                Point::from((width + dimensions[i].0, dimensions[i].1 / 3. * 2.)),
-                Point::from(((width + dimensions[i].0) / 2., dimensions[i].1 / 3. * 2.)),
-                Point::from(((width + dimensions[i].0) / 2., dimensions[i].1 / 3. * 2.)),
-                Point::from((width, dimensions[i].1 / 3. * 2.)),
+                Point::from((width + dim.0, dim.1 / 3. * 2.)),
+                Point::from(((width + dim.0) / 2., dim.1 / 3. * 2.)),
+                Point::from(((width + dim.0) / 2., dim.1 / 3. * 2.)),
+                Point::from((width, dim.1 / 3. * 2.)),
             ));
         }
         map

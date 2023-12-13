@@ -80,7 +80,7 @@ impl Game {
     /// Add your game structure : title, main_game function, and max number of players
     pub fn create_game(&self) -> GameStruct {
         match self {
-            Game::Racer => GameStruct::new(String::from("Racer"), Box::new(racer::main_game), None),
+            Game::Racer => GameStruct::new(String::from("Racer"), Box::new(|network| unsafe{racer::main_game(network)}), None),
             Game::MazeFight => GameStruct::new(String::from("Maze Fight"), Box::new(|network| unsafe{maze_fight::main_game(network)}), Some(9)),
             _ => panic!("this game is still awaiting for your awesome code ..."),
         }

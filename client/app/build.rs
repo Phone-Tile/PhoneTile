@@ -4,7 +4,7 @@ fn main() {
     let target_info = env::var("TARGET").unwrap();
     let target_info: Vec<&str> = target_info.split('-').collect();
     let arch = target_info[0];
-    let (_make_arch, lib_ndk, lib_folder) = match arch {
+    let (_make_arch, lib_ndk, _lib_folder) = match arch {
         "armv7" => ("arm", "arm", "armeabi-v7a"),
         "aarch64" => ("arm64", "aarch64", "arm64"),
         "i686" => ("x86", "i386", "x86"),
