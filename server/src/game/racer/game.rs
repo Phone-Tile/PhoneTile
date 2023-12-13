@@ -31,7 +31,7 @@ impl Game {
         }
         if map.is_empty() {
             let io_map = Game::get_io_map(dimensions)?;
-            map = Bezier::random_map(dimensions, io_map);
+            map = Bezier::random_map_pas_si_random(dimensions, io_map);
         }
         // assert!(
         //     map[0].get_points().0 == map[map.len() - 1].get_points().3,
