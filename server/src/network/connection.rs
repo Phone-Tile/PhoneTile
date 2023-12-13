@@ -282,13 +282,14 @@ impl Connection {
                 match packet::Packet::recv_packet(&mut self.stream) {
                     Ok(packet) => {
                         packet.check_packet_flag(packet::Flag::Launch)?;
+                        self.game_id = packet.option.into();
                     }
                     Err(_) => {
                         return Err(Error::new(ErrorKind::NotConnected, "client disconnected"));
                     }
                 }
                 let sender = self.game_sender.as_mut().expect("No sender !");
-                match sender.send(pipe::GameMessage::launch_message()) {
+                match sender.send(pipe::GameMessage::launch_message(self.game_id.into())) {
                     Ok(_) => {}
                     Err(e) => {
                         return Err(Error::new(ErrorKind::BrokenPipe, "pipe with game broken"))
@@ -302,7 +303,7 @@ impl Connection {
                             self.session_token,
                             self.room_token,
                             &[],
-                            0,
+                            self.game_id.into(),
                         );
                         self.send_packet(packet)?;
                     }
@@ -314,14 +315,14 @@ impl Connection {
             Lock::Disabled => {
                 // listen to game_receiver for lock message
                 match self.my_recv.as_ref().unwrap().recv() {
-                    Ok(_) => {
+                    Ok(message) => {
                         let packet = packet::Packet::new(
                             packet::Flag::Launch,
                             0,
                             self.session_token,
                             self.room_token,
                             &[],
-                            0,
+                            message.rank.unwrap(),
                         );
                         self.send_packet(packet)?;
                     }
