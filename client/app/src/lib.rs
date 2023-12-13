@@ -216,7 +216,7 @@ extern "C" fn main() {
                                 let top = button::top(screen_height, screen_width, game::title(game_id));
                                 top.draw();
                                 if top.click() {
-                                    let game_chosen = Game::from(game_id);
+                                    game_chosen = Game::from(game_id);
                                 }
 
                                 let mid_game = Game::from(game_id+1);
@@ -224,19 +224,18 @@ extern "C" fn main() {
                                     let middle = button::mid(screen_height, screen_width, game::title(game_id+1));
                                     middle.draw();
                                     if middle.click() {
-                                        let game_chosen = Game::from(game_id+1);
+                                        game_chosen = Game::from(game_id+1);
                                     }
                                 }
 
                                 let bottom_game = Game::from(game_id+2);
                                 if bottom_game != Game::Unknown {
-                                    let bottom = button::mid(screen_height, screen_width, game::title(game_id+1));
+                                    let bottom = button::bottom(screen_height, screen_width, game::title(game_id+2));
                                     bottom.draw();
                                     if bottom.click() {
-                                        let game_chosen = Game::from(game_id+2);
+                                        game_chosen = Game::from(game_id+2);
                                     }
                                 }
-                                
                             } else {
                                 let top = button::top(screen_height, screen_width, game::title(game_id));
                                 let middle = button::mid(screen_height, screen_width, game::title(game_id+1));
@@ -249,13 +248,13 @@ extern "C" fn main() {
                                 next_page.draw();
 
                                 if top.click() {
-                                    let game_chosen = Game::from(game_id);
+                                    game_chosen = Game::from(game_id);
                                 }
                                 if middle.click() {
-                                    let game_chosen = Game::from(game_id+1);
+                                    game_chosen = Game::from(game_id+1);
                                 }
                                 if bottom.click() {
-                                    let game_chosen = Game::from(game_id+2);
+                                    game_chosen = Game::from(game_id+2);
                                 }
 
                                 if next_page.click() {
@@ -302,17 +301,21 @@ extern "C" fn main() {
                             }
                         }
                     }
-                    network::Status::InGame => {
+                    network::Status::InGame(game_id) => {
+                        game_chosen = Game::from(game_id);
                         break;
                     }
                 }
             });
             DrawFPS(10, 10);
         }
-        match game_id {
-            network::Game::MazeFight => game::maze_fight::main_game(&mut network),
+        game::racer::main_game(&mut network);
+
+        /* 
+        match game_chosen {
+            Game::MazeFight => game::maze_fight::main_game(&mut network),
             _ => {},
-        }
+        }*/
 
         CloseWindow();
     }
