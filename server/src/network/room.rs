@@ -129,7 +129,7 @@ impl Room {
         while index < self.players.len() {
             match self.players[index]
                 .sender
-                .send(pipe::GameMessage::launch_message())
+                .send(pipe::GameMessage::launch_message(self.game_id.into()))
             {
                 Ok(_) => index += 1,
                 Err(e) => {
@@ -144,6 +144,7 @@ impl Room {
         // Here we will put the interface code with the client
         match self.game_id {
             client::Game::Racer => crate::game::racer::racer(&mut self.players),
+            client::Game::Snake => Ok(()),
             client::Game::MazeFight => crate::game::maze_fight::maze_fight(&mut self.players),
             client::Game::Test => test_function(&mut self.players),
             client::Game::Unknown => Ok(()),

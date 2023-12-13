@@ -32,6 +32,7 @@ use ui::button::Draw;
 use ui::colors;
 use ui::keyboard::Keyboard;
 use ui::text::waiting_text;
+use game::Game;
 
 // Main function
 #[no_mangle]
@@ -117,6 +118,9 @@ extern "C" fn main() {
         let mut want_join = false;
 
         let mut is_host = false;
+
+        let mut game_chosen = Game::Unknown;
+        let mut page_selection = 0;
 
         while !WindowShouldClose() {
             draw!({
@@ -206,25 +210,59 @@ extern "C" fn main() {
                                 colors::YELLOW,
                             );
 
-                            let racer = button::racer(screen_height, screen_width);
-                            let snake = button::snake(screen_height, screen_width);
-                            let golf = button::golf(screen_height, screen_width);
+                            let game_id = 3*page_selection + 1;
 
-                            racer.draw();
-                            snake.draw();
-                            golf.draw();
+                            if Game::from(game_id+3) == Game::Unknown {
+                                let top = button::top(screen_height, screen_width, game::title(game_id));
+                                top.draw();
+                                if top.click() {
+                                    game_chosen = Game::from(game_id);
+                                }
 
-                            /*if button::GAME().colision() {
-                                button::GAME().change_foreground_color(colors::BLUE);
-                            };*/
-                            if racer.click() {
-                                network.lock_room(network::Game::Racer).unwrap();
+                                let mid_game = Game::from(game_id+1);
+                                if mid_game != Game::Unknown {
+                                    let middle = button::mid(screen_height, screen_width, game::title(game_id+1));
+                                    middle.draw();
+                                    if middle.click() {
+                                        game_chosen = Game::from(game_id+1);
+                                    }
+                                }
+
+                                let bottom_game = Game::from(game_id+2);
+                                if bottom_game != Game::Unknown {
+                                    let bottom = button::bottom(screen_height, screen_width, game::title(game_id+2));
+                                    bottom.draw();
+                                    if bottom.click() {
+                                        game_chosen = Game::from(game_id+2);
+                                    }
+                                }
+                            } else {
+                                let top = button::top(screen_height, screen_width, game::title(game_id));
+                                let middle = button::mid(screen_height, screen_width, game::title(game_id+1));
+                                let bottom = button::bottom(screen_height, screen_width, game::title(game_id+2));
+                                let next_page = button::next_page(screen_height, screen_width);
+
+                                top.draw();
+                                middle.draw();
+                                bottom.draw();
+                                next_page.draw();
+
+                                if top.click() {
+                                    game_chosen = Game::from(game_id);
+                                }
+                                if middle.click() {
+                                    game_chosen = Game::from(game_id+1);
+                                }
+                                if bottom.click() {
+                                    game_chosen = Game::from(game_id+2);
+                                }
+
+                                if next_page.click() {
+                                    page_selection = page_selection + 1;
+                                }
                             }
-                            if snake.click() {
-                                network.lock_room(network::Game::MazeFight).unwrap();
-                            }
-                            if golf.click() {
-                                network.lock_room(network::Game::Unknown).unwrap();
+                            if game_chosen != Game::Unknown{
+                                network.lock_room(game_chosen).unwrap();
                             }
                         } else {
                             waiting_text(screen_height, screen_width)
@@ -263,19 +301,15 @@ extern "C" fn main() {
                             }
                         }
                     }
-                    network::Status::InGame => {
-                        println!("I'm in game!!!");
-                        // network.send(data);
-                        // main_game(receive(data));
+                    network::Status::InGame(game_id) => {
+                        game_chosen = Game::from(game_id);
                         break;
                     }
                 }
             });
-
             DrawFPS(10, 10);
         }
-        println!("I'm in game!!!");
-        game::racer::main_game(&mut network);
+        game::maze_fight::main_game(&mut network);
         CloseWindow();
     }
 

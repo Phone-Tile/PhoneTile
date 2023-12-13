@@ -60,7 +60,7 @@ fn encode_data(game: &game::Game, player: &player::Player) -> Vec<u8> {
 
 fn send_data(players: &mut [player::Player], game: &game::Game) {
     for player in players.iter_mut() {
-        let raw_data = encode_data(&game, &player);
+        let raw_data = encode_data(game, player);
         player.send(raw_data.as_slice()).err();
     }
 }

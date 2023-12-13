@@ -187,46 +187,52 @@ impl Bezier {
     ///    |___O___|         |___O___|
     ///
     /// Transform this list of pairs into a list of Bezier curves with starting and ending points corresponding to each pair.
-    /// 
+    ///
     pub fn random_map_pas_si_random(dimensions: &Vec<(f64, f64)>, io_points: Data) -> Vec<Self> {
         let mut map = vec![];
         let mut width = 0.;
         map.push(Bezier::new(
-            Point::from((dimensions[0].0, dimensions[0].1/3.*2.)),
-            Point::from((0, dimensions[0].1/3.*2.)),
-            Point::from((0, dimensions[0].1/3.)),
-            Point::from((dimensions[0].0, dimensions[0].1/3.)),
+            Point::from((dimensions[0].0, dimensions[0].1 / 3. * 2.)),
+            Point::from((0, dimensions[0].1 / 3. * 2.)),
+            Point::from((0, dimensions[0].1 / 3.)),
+            Point::from((dimensions[0].0, dimensions[0].1 / 3.)),
         ));
 
-        for i in 0..dimensions.len()-2 {
+        for i in 0..dimensions.len() - 2 {
             width += dimensions[i].0;
-            
+
             map.push(Bezier::new(
-                Point::from((width, dimensions[i+1].1/3.)),
-                Point::from(((width + dimensions[i+1].0)/2., dimensions[i+1].1/3.)),
-                Point::from(((width + dimensions[i+1].0)/2., dimensions[i+1].1/3.)),
-                Point::from((width + dimensions[i+1].0, dimensions[i+1].1/3.)),
+                Point::from((width, dimensions[i + 1].1 / 3.)),
+                Point::from(((width + dimensions[i + 1].0) / 2., dimensions[i + 1].1 / 3.)),
+                Point::from(((width + dimensions[i + 1].0) / 2., dimensions[i + 1].1 / 3.)),
+                Point::from((width + dimensions[i + 1].0, dimensions[i + 1].1 / 3.)),
             ));
         }
-        width += dimensions[dimensions.len()-2].0;
+        width += dimensions[dimensions.len() - 2].0;
         map.push(Bezier::new(
-            Point::from((width, dimensions[dimensions.len()-1].1/3.)),
-            Point::from((width + dimensions[dimensions.len()-1].0, dimensions[dimensions.len()-1].1/3.)),
-            Point::from((width + dimensions[dimensions.len()-1].0, dimensions[dimensions.len()-1].1/3.*2.)),
-            Point::from((width, dimensions[dimensions.len()-1].1/3.*2.)),
+            Point::from((width, dimensions[dimensions.len() - 1].1 / 3.)),
+            Point::from((
+                width + dimensions[dimensions.len() - 1].0,
+                dimensions[dimensions.len() - 1].1 / 3.,
+            )),
+            Point::from((
+                width + dimensions[dimensions.len() - 1].0,
+                dimensions[dimensions.len() - 1].1 / 3. * 2.,
+            )),
+            Point::from((width, dimensions[dimensions.len() - 1].1 / 3. * 2.)),
         ));
 
-        for i in dimensions.len()-1..1 {
+        for i in dimensions.len() - 1..1 {
             width -= dimensions[i].0;
-            
+
             map.push(Bezier::new(
-                Point::from((width + dimensions[i].0, dimensions[i].1/3.*2.)),
-                Point::from(((width + dimensions[i].0)/2., dimensions[i].1/3.*2.)),
-                Point::from(((width + dimensions[i].0)/2., dimensions[i].1/3.*2.)),
-                Point::from((width, dimensions[i].1/3.*2.)),
+                Point::from((width + dimensions[i].0, dimensions[i].1 / 3. * 2.)),
+                Point::from(((width + dimensions[i].0) / 2., dimensions[i].1 / 3. * 2.)),
+                Point::from(((width + dimensions[i].0) / 2., dimensions[i].1 / 3. * 2.)),
+                Point::from((width, dimensions[i].1 / 3. * 2.)),
             ));
         }
-        map 
+        map
     }
 
     pub fn random_map2(dimensions: &Vec<(f64, f64)>, io_points: Data) -> Vec<Self> {
@@ -245,73 +251,86 @@ impl Bezier {
         control_screen_start_top.1 *= dimensions[0].1;
 
         map.push(Bezier::new(
-            Point::from((dimensions[0].0, dimensions[0].1/3.*2.)),
+            Point::from((dimensions[0].0, dimensions[0].1 / 3. * 2.)),
             Point::from(control_screen_start_top),
             Point::from(control_screen_start_bot),
-            Point::from((dimensions[0].0, dimensions[0].1/3.)),
+            Point::from((dimensions[0].0, dimensions[0].1 / 3.)),
         ));
 
-        // Do the same for every intermediate phones remembering the previous random control point and taking the symmetry 
+        // Do the same for every intermediate phones remembering the previous random control point and taking the symmetry
         // as the new control point in order to keep a infinitely derivable curves
         let mut previous_point = control_screen_start_bot;
-        for i in 0..dimensions.len()-2 {
+        for i in 0..dimensions.len() - 2 {
             width += dimensions[i].0;
             let mut next_control_point = rng.gen::<(f64, f64)>();
-            next_control_point.0 *= dimensions[i+1].0;
-            next_control_point.1 *= dimensions[i+1].1;
+            next_control_point.0 *= dimensions[i + 1].0;
+            next_control_point.1 *= dimensions[i + 1].1;
 
             // Avoid collisions by choosing each control point in a separated area (at the bottom for the moment)
             next_control_point.1 *= 0.5;
-            
+
             map.push(Bezier::new(
-                Point::from((width, dimensions[i+1].1/3.)),
-                Point::from(previous_point).symmetry(Point::from((width, dimensions[i+1].1/3.))),
+                Point::from((width, dimensions[i + 1].1 / 3.)),
+                Point::from(previous_point)
+                    .symmetry(Point::from((width, dimensions[i + 1].1 / 3.))),
                 Point::from(next_control_point),
-                Point::from((width + dimensions[i+1].0, dimensions[i+1].1/3.)),
+                Point::from((width + dimensions[i + 1].0, dimensions[i + 1].1 / 3.)),
             ));
             previous_point = next_control_point;
         }
-        width += dimensions[dimensions.len()-2].0;
-        
+        width += dimensions[dimensions.len() - 2].0;
+
         let mut next_control_point = rng.gen::<(f64, f64)>();
-        next_control_point.0 *= dimensions[dimensions.len()-1].0;
-        next_control_point.1 *= dimensions[dimensions.len()-1].1;
-        
+        next_control_point.0 *= dimensions[dimensions.len() - 1].0;
+        next_control_point.1 *= dimensions[dimensions.len() - 1].1;
+
         // change it to make the circuit spend more time on the last phone
         previous_point.0 = 0.5 * (1. + previous_point.0);
 
         map.push(Bezier::new(
-            Point::from((width, dimensions[dimensions.len()-1].1/3.)),
-            Point::from(previous_point).symmetry(Point::from((width, dimensions[dimensions.len()-1].1/3.))),
+            Point::from((width, dimensions[dimensions.len() - 1].1 / 3.)),
+            Point::from(previous_point).symmetry(Point::from((
+                width,
+                dimensions[dimensions.len() - 1].1 / 3.,
+            ))),
             Point::from(next_control_point),
-            Point::from((width, dimensions[dimensions.len()-1].1/3.*2.)),
+            Point::from((width, dimensions[dimensions.len() - 1].1 / 3. * 2.)),
         ));
         previous_point = next_control_point;
 
-        for i in dimensions.len()-1..1 {
+        for i in dimensions.len() - 1..1 {
             width -= dimensions[i].0;
             width += dimensions[i].0;
             let mut next_control_point = rng.gen::<(f64, f64)>();
-            next_control_point.0 *= dimensions[i+1].0;
-            next_control_point.1 *= dimensions[i+1].1;
+            next_control_point.0 *= dimensions[i + 1].0;
+            next_control_point.1 *= dimensions[i + 1].1;
 
             // Avoid collisions by choosing each control point in a separated area (at the top now)
             next_control_point.1 = 0.5 * (next_control_point.1 + 1.);
-            
+
             map.push(Bezier::new(
-                Point::from((width + dimensions[i].0, dimensions[i].1/3.*2.)),
-                Point::from(previous_point).symmetry(Point::from((width + dimensions[i].0, dimensions[i].1/3.*2.))),
+                Point::from((width + dimensions[i].0, dimensions[i].1 / 3. * 2.)),
+                Point::from(previous_point).symmetry(Point::from((
+                    width + dimensions[i].0,
+                    dimensions[i].1 / 3. * 2.,
+                ))),
                 Point::from(next_control_point),
-                Point::from((width, dimensions[i].1/3.*2.)),
+                Point::from((width, dimensions[i].1 / 3. * 2.)),
             ));
             previous_point = next_control_point;
         }
         // Join the first and last curves together with smoothness
         map.push(Bezier::new(
-            Point::from((width + dimensions[1].0, dimensions[1].1/3.*2.)),
-            Point::from(previous_point).symmetry(Point::from((width + dimensions[1].0, dimensions[1].1/3.*2.))),
-            Point::from(control_screen_start_top).symmetry(Point::from((width + dimensions[0].0, dimensions[0].1/3.*2.))),
-            Point::from((width, dimensions[0].1/3.*2.)),
+            Point::from((width + dimensions[1].0, dimensions[1].1 / 3. * 2.)),
+            Point::from(previous_point).symmetry(Point::from((
+                width + dimensions[1].0,
+                dimensions[1].1 / 3. * 2.,
+            ))),
+            Point::from(control_screen_start_top).symmetry(Point::from((
+                width + dimensions[0].0,
+                dimensions[0].1 / 3. * 2.,
+            ))),
+            Point::from((width, dimensions[0].1 / 3. * 2.)),
         ));
         map
     }
@@ -348,7 +367,7 @@ impl Bezier {
                 // Make the car spend more time on last phone x = (b-a) + x*a/b
                 control_1.0 = 0.5 * (control_1.0 + 1.);
                 control_2.0 = 0.5 * (control_2.0 + 1.);
-            } else if i == io_points.len()-1 {
+            } else if i == io_points.len() - 1 {
                 // no random for the last control point in order to loop
                 control_2 = control_last_right;
             }
@@ -371,23 +390,19 @@ impl Bezier {
                     + offset
                     + dimensions[*phone_idx].1 / 2.;
             } else {
-                control_1_1 =
-                    control_1.0 * (dimensions[*phone_idx].0) + widths[*phone_idx] + eps;
+                control_1_1 = control_1.0 * (dimensions[*phone_idx].0) + widths[*phone_idx] + eps;
                 control_1_2 = control_1.1 * dimensions[*phone_idx].1 / 2. + offset;
             }
             if output.1 > dimensions[*phone_idx].1 / 2. + offset {
-                control_2_1 =
-                    control_2.0 * (dimensions[*phone_idx].0) + widths[*phone_idx] + eps;
+                control_2_1 = control_2.0 * (dimensions[*phone_idx].0) + widths[*phone_idx] + eps;
                 control_2_2 = control_2.1 * dimensions[*phone_idx].1 / 2.
                     + offset
                     + dimensions[*phone_idx].1 / 2.;
             } else if *phone_idx == 0 {
-                control_2_1 =
-                    control_2.0 * (dimensions[0].0);
+                control_2_1 = control_2.0 * (dimensions[0].0);
                 control_2_2 = control_2.1 * dimensions[*phone_idx].1 / 2. + offset;
             } else {
-                control_2_1 =
-                    control_2.0 * (dimensions[*phone_idx].0) + widths[*phone_idx] + eps;
+                control_2_1 = control_2.0 * (dimensions[*phone_idx].0) + widths[*phone_idx] + eps;
                 control_2_2 = control_2.1 * dimensions[*phone_idx].1 / 2. + offset;
             }
 

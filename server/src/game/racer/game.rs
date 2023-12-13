@@ -129,7 +129,7 @@ impl Game {
         &self.cars
     }
 
-    pub fn get_car_dir(&self, car : &Vehicle) -> (f64, f64){
+    pub fn get_car_dir(&self, car: &Vehicle) -> (f64, f64) {
         self.map[car.curve_index].compute_grad(car.t).into_tuple()
     }
 
@@ -150,7 +150,7 @@ impl Game {
     pub fn update_position(&mut self, car_idx: usize, accelerate: bool) {
         // Random bullshit, GO! v(t+dt) = (a-f*v(t))*dt
         self.cars[car_idx].speed += ((if accelerate { ACC_RATE } else { 0. })
-            - FRICTION * self.cars[car_idx].speed /* self.cars[car_idx].speed*/)
+            - FRICTION * self.cars[car_idx].speed/* self.cars[car_idx].speed*/)
             * DT;
 
         let mut new_t = self.cars[car_idx].t;

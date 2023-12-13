@@ -2,59 +2,11 @@ use std::fmt::Display;
 use std::io::{Error, ErrorKind};
 use std::net::{SocketAddr, TcpStream};
 use std::time::Duration;
+use crate::game::Game;
 
 pub mod packet;
 
 /// All of those functions are completely non-blocking
-
-//////////////////////////////////////////////
-///
-///
-/// Game flag
-///
-///
-//////////////////////////////////////////////
-
-#[derive(Clone, Copy)]
-pub enum Game {
-    Racer,
-    MazeFight,
-    Test,
-    Unknown,
-}
-
-impl From<Game> for u16 {
-    fn from(value: Game) -> Self {
-        match value {
-            Game::Racer => 1,
-            Game::MazeFight => 2,
-            Game::Test => 0x80,
-            Game::Unknown => 0xff,
-        }
-    }
-}
-
-impl From<u16> for Game {
-    fn from(value: u16) -> Self {
-        match value {
-            1 => Game::Racer,
-            2 => Game::MazeFight,
-            0x80 => Game::Test,
-            _ => Game::Unknown,
-        }
-    }
-}
-
-impl Display for Game {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Game::Racer => write!(f, "Racer"),
-            Game::MazeFight => write!(f, "Maze-Fight"),
-            Game::Test => write!(f, "Test"),
-            Game::Unknown => write!(f, "Unknown"),
-        }
-    }
-}
 
 //////////////////////////////////////////////
 ///
@@ -70,7 +22,7 @@ pub enum Status {
     Disconnected,
     InRoom,
     InLockRoom(u8),
-    InGame,
+    InGame(u16),
 }
 
 //////////////////////////////////////////////
@@ -85,6 +37,7 @@ pub struct Network {
     stream: TcpStream,
     session_token: u16,
     room_token: u16,
+    game_id: u16,
     status: Status,
 }
 
@@ -112,6 +65,7 @@ impl Network {
                     stream,
                     session_token: 0,
                     room_token: 0,
+                    game_id: 0,
                     status: Status::Connected,
                 };
                 network.init_handshake(
@@ -165,6 +119,7 @@ impl Network {
     /// The position of each user is given from this point when the get_status is triggered
     /// THIS FUNCTION WILL WORK ONLY IF create_room HAS BEEN CALLED BEFORE THAT
     pub fn lock_room(&mut self, game_id: Game) -> Result<(), Error> {
+        self.game_id = game_id.into();
         packet::Packet::new(
             packet::Flag::Lock,
             0,
@@ -190,7 +145,7 @@ impl Network {
         .send_packet(&mut self.stream)
         {
             Ok(_) => {
-                self.status = Status::InGame;
+                self.status = Status::InGame(self.game_id);
                 Ok(())
             }
             Err(e) => Err(e),
@@ -243,8 +198,8 @@ impl Network {
                 None => self.status.clone(),
             },
             Status::InLockRoom(_) => match packet::Packet::try_recv_packet(&mut self.stream) {
-                Some(_) => {
-                    self.status = Status::InGame;
+                Some(packet) => {
+                    self.status = Status::InGame(packet.option);
                     self.status.clone()
                 }
                 None => self.status.clone(),
