@@ -251,7 +251,7 @@ pub fn bottom(screen_height: i32, screen_width: i32, text: String) -> Button {
         },
         Style::new(colors::WHITE, colors::GREEN),
         Some(format!("{}", text)),
-        1./6. * (screen_width as f32) as c_float,
+        1./7. * (screen_width as f32) as c_float,
     ) 
 }
 
