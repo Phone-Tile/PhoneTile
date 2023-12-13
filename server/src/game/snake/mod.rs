@@ -6,7 +6,7 @@ use std::io::Error;
 use std::time;
 use std::{thread, vec};
 
-pub const BLOCK_SIZE: usize = 50;
+pub const BLOCK_SIZE: i32 = 50;
 
 //////////////////////////////////////////////
 ///
@@ -17,7 +17,7 @@ pub const BLOCK_SIZE: usize = 50;
 //////////////////////////////////////////////
 
 #[repr(u8)]
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 enum Direction {
     Left,
     Right,
@@ -36,16 +36,17 @@ impl From<u8> for Direction {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 struct DiscreteVec {
-    x: usize,
-    y: usize,
+    x: i32,
+    y: i32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Snake {
     tail: VecDeque<DiscreteVec>,
     dir: Direction,
+    is_dead: bool,
 }
 
 pub fn snake(players: &mut [network::player::Player]) -> Result<(), Error> {
@@ -71,11 +72,12 @@ pub fn snake(players: &mut [network::player::Player]) -> Result<(), Error> {
     for p in players.iter() {
         snakes.push(Snake {
             tail: [DiscreteVec {
-                x: (p.physical_width / 2. + p.top_left_x) as usize / BLOCK_SIZE,
-                y: (p.physical_height / 2. + p.top_left_y) as usize / BLOCK_SIZE,
+                x: (p.physical_width / 2. + p.top_left_x) as i32 / BLOCK_SIZE,
+                y: (p.physical_height / 2. + p.top_left_y) as i32 / BLOCK_SIZE,
             }]
             .into(),
             dir: Direction::Right,
+            is_dead: false,
         });
     }
 
@@ -83,8 +85,8 @@ pub fn snake(players: &mut [network::player::Player]) -> Result<(), Error> {
     for _ in players.iter() {
         for _ in 0..3 {
             food.push(DiscreteVec {
-                x: (rand::random::<f32>() * width) as usize / BLOCK_SIZE,
-                y: (rand::random::<f32>() * height) as usize / BLOCK_SIZE,
+                x: (rand::random::<f32>() * width) as i32 / BLOCK_SIZE,
+                y: (rand::random::<f32>() * height) as i32 / BLOCK_SIZE,
             })
         }
     }
@@ -102,9 +104,18 @@ pub fn snake(players: &mut [network::player::Player]) -> Result<(), Error> {
             update_timer = time::Instant::now();
         }
 
-        for (p, s) in players.iter_mut().zip(snakes.clone().iter_mut()) {
+        if new_fruit_timer.elapsed().as_millis() > 10000 / players.len() as u128 {
+            food.push(DiscreteVec {
+                x: (rand::random::<f32>() * width) as i32 / BLOCK_SIZE,
+                y: (rand::random::<f32>() * height) as i32 / BLOCK_SIZE,
+            });
+            new_fruit_timer = time::Instant::now();
+        }
+
+        let snakes_copy = snakes.clone();
+
+        for (p, s) in players.iter_mut().zip(snakes.iter_mut()) {
             if let Some(dir) = recv_data(p) {
-                println!("coucou !");
                 if dir == Direction::Right && s.dir != Direction::Left {
                     s.dir = Direction::Right;
                 } else if dir == Direction::Left && s.dir != Direction::Right {
@@ -114,40 +125,52 @@ pub fn snake(players: &mut [network::player::Player]) -> Result<(), Error> {
                 } else if dir == Direction::Up && s.dir != Direction::Down {
                     s.dir = Direction::Up;
                 }
-                println!("coucou1 !");
-                send_data(p, &snakes, &food);
-                println!("coucou2 !");
+                send_data(p, &snakes_copy, &food);
             }
         }
-        thread::sleep(time::Duration::from_millis(5));
+        thread::sleep(time::Duration::from_millis(10));
     }
 }
 
-fn update_snake_pos(snakes: &mut Vec<Snake>, food: &mut Vec<DiscreteVec>) {
-    for snake in snakes {
-        let mut p = snake.tail[0].clone();
-        match snake.dir {
-            Direction::Down => p.y += 1,
-            Direction::Up => p.y -= 1,
-            Direction::Left => p.x -= 1,
-            Direction::Right => p.x += 1,
-        }
-        let mut i = 0;
-        let mut should_pop = true;
-        while i < food.len() {
-            let f = food[i];
-            if f.x == p.x && f.y == p.y {
-                food.swap_remove(i);
-                should_pop = false;
-                break;
-            } else {
-                i += 1;
+fn update_snake_pos(snakes: &mut [Snake], food: &mut Vec<DiscreteVec>) {
+    let snakes_copy = snakes.to_owned();
+    for snake in snakes.iter_mut() {
+        if !snake.is_dead {
+            let mut p = snake.tail[0];
+            match snake.dir {
+                Direction::Down => p.y += 1,
+                Direction::Up => p.y -= 1,
+                Direction::Left => p.x -= 1,
+                Direction::Right => p.x += 1,
+            }
+            let mut i = 0;
+            let mut should_pop = true;
+            while i < food.len() {
+                let f = food[i];
+                if f.x == p.x && f.y == p.y {
+                    food.swap_remove(i);
+                    should_pop = false;
+                    break;
+                } else {
+                    i += 1;
+                }
+            }
+            'iter: for s in snakes_copy.iter() {
+                for (i, p) in s.tail.iter().enumerate() {
+                    if p.x == snake.tail[0].x && p.y == snake.tail[0].y && i != 0 {
+                        snake.is_dead = true;
+                        snake.tail.clear();
+                        break 'iter;
+                    }
+                }
+            }
+            if !snake.is_dead {
+                if should_pop {
+                    snake.tail.pop_back().unwrap();
+                }
+                snake.tail.push_front(p);
             }
         }
-        if should_pop {
-            snake.tail.pop_back().unwrap();
-        }
-        snake.tail.push_front(p);
     }
 }
 

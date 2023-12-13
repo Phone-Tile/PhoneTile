@@ -274,7 +274,7 @@ extern "C" fn main() {
             DrawFPS(10, 10);
         }
         game::snake::main_game(&mut network);
-        game::maze_fight::main_game(&mut network);
+        //game::maze_fight::main_game(&mut network);
         CloseWindow();
     }
 
