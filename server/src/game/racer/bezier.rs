@@ -187,8 +187,7 @@ impl Bezier {
     ///    |___O___|         |___O___|
     ///
     /// Transform this list of pairs into a list of Bezier curves with starting and ending points corresponding to each pair.
-    /// The pairs (ok, ik+1) correspond to temp curves that are used to generate smooth transitions between two curves by enforcing their control point to be the symmetry of the surronding curves.
-    ///
+    /// 
     pub fn random_map_pas_si_random(dimensions: &Vec<(f64, f64)>, io_points: Data) -> Vec<Self> {
         let mut map = vec![];
         let mut width = 0.;

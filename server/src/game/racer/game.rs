@@ -29,14 +29,11 @@ impl Game {
         for i in 0..n_cars {
             cars.push(Vehicle::new(0, i));
         }
+        cars.iter_mut().for_each(|car| car.t = 0.5);
         if map.is_empty() {
             let io_map = Game::get_io_map(dimensions)?;
             map = Bezier::random_map_pas_si_random(dimensions, io_map);
         }
-        // assert!(
-        //     map[0].get_points().0 == map[map.len() - 1].get_points().3,
-        //     "The given circuit is not closed. Please make sure the first and last point coincide."
-        // );
         Ok(Game { map, cars })
     }
 
