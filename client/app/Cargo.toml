@@ -1,5 +1,5 @@
 [package]
-name = "PhoneTile"
+name = "phone_tile"
 version = "0.0.1"
 authors = [ " <lzebulon@archlinux>" ]
 
@@ -7,9 +7,13 @@ authors = [ " <lzebulon@archlinux>" ]
 name = "phone_tile"
 crate-type = ["cdylib"]
 
-[profil.release]
+
+
+[profile.release]
 strip = true
 
 [dependencies]
 raylib = {path = "../raylib"}
+
+[target.'cfg(target_os = "android")'.dependencies]
 native_app_glue = {path = "../native_app_glue"}

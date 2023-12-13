@@ -13,8 +13,10 @@ use raylib::{draw, raylib_str};
 // WARNING :                                                            //
 // This is for android DON'T TOUCH THIS WORK !                          //
 //////////////////////////////////////////////////////////////////////////
+#[cfg(target_os = "android")]
 extern crate native_app_glue;
 
+#[cfg(target_os = "android")]
 #[no_mangle]
 pub extern "C" fn ANativeActivity_onCreate(
     activity: *mut native_app_glue::ANativeActivity,
@@ -36,7 +38,18 @@ use game::Game;
 
 // Main function
 #[no_mangle]
+#[cfg(target_os = "android")]
 extern "C" fn main() {
+    main_rust()
+}
+
+#[cfg(not(target_os = "android"))]
+fn main() {
+    main_rust()
+}
+
+#[inline]
+fn main_rust() {
     unsafe {
         let monitor = GetCurrentMonitor();
         let screen_width = GetScreenWidth();
