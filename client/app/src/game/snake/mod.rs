@@ -2,7 +2,7 @@ use std::{default, ffi::c_int, thread, time, vec};
 
 use crate::{
     network::{self, packet},
-    ui::{button::snake, colors},
+    ui::colors,
 };
 use c_char;
 use raylib::{self, draw, raylib_str};
