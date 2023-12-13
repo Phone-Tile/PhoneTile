@@ -58,7 +58,7 @@ pub fn title(game_id: u16) -> String {
     match game_id {
         1 => "Racer",
         2 => "Snake",
-        3 => "Maze Fight",
+        3 => "Maze",
         _ => "Unknown ???",
     })
 }
