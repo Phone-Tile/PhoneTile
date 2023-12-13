@@ -145,6 +145,7 @@ impl Room {
         match self.game_id {
             client::Game::Racer => crate::game::racer::racer(&self.players),
             client::Game::MazeFight => crate::game::maze_fight::maze_fight(&mut self.players)?,
+            client::Game::Snake => crate::game::snake::snake(&mut self.players)?,
             client::Game::Test => test_function(&mut self.players),
             client::Game::Unknown => {}
         }

@@ -15,7 +15,7 @@ use std::time::{self, SystemTime};
 //////////////////////////////////////////////
 
 pub const HEADER_SIZE: usize = 12;
-pub const MAX_DATA_SIZE: usize = 2036;
+pub const MAX_DATA_SIZE: usize = 1012;
 pub const BUFFER_SIZE: usize = HEADER_SIZE + MAX_DATA_SIZE;
 
 //////////////////////////////////////////////

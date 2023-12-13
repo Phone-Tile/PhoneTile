@@ -1,3 +1,5 @@
+use crate::game;
+
 use super::packet;
 use std::fmt::{write, Display};
 use std::io::{Error, ErrorKind, Read, Write};
@@ -18,6 +20,7 @@ use std::{thread, time};
 pub enum Game {
     Racer,
     MazeFight,
+    Snake,
     Test,
     Unknown,
 }
@@ -27,6 +30,7 @@ impl From<Game> for u16 {
         match value {
             Game::Racer => 1,
             Game::MazeFight => 2,
+            Game::Snake => 3,
             Game::Test => 0x80,
             Game::Unknown => 0xff,
         }
@@ -38,6 +42,7 @@ impl From<u16> for Game {
         match value {
             1 => Game::Racer,
             2 => Game::MazeFight,
+            3 => Game::Snake,
             0x80 => Game::Test,
             _ => Game::Unknown,
         }
@@ -49,6 +54,7 @@ impl Display for Game {
         match self {
             Game::Racer => write!(f, "Racer"),
             Game::MazeFight => write!(f, "Maze-Fight"),
+            Game::Snake => write!(f, "Snake"),
             Game::Test => write!(f, "Test"),
             Game::Unknown => write!(f, "Unknown"),
         }

@@ -221,7 +221,7 @@ extern "C" fn main() {
                                 network.lock_room(network::Game::Racer).unwrap();
                             }
                             if snake.click() {
-                                network.lock_room(network::Game::MazeFight).unwrap();
+                                network.lock_room(network::Game::Snake).unwrap();
                             }
                             if golf.click() {
                                 network.lock_room(network::Game::Unknown).unwrap();
@@ -273,6 +273,7 @@ extern "C" fn main() {
 
             DrawFPS(10, 10);
         }
+        game::snake::main_game(&mut network);
         game::maze_fight::main_game(&mut network);
         CloseWindow();
     }
