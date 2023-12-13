@@ -314,7 +314,7 @@ impl Bezier {
             Point::from(control_screen_start_top).symmetry(Point::from((width + dimensions[0].0, dimensions[0].1/3.*2.))),
             Point::from((width, dimensions[0].1/3.*2.)),
         ));
-        map 
+        map
     }
 
     pub fn random_map(dimensions: &Vec<(f64, f64)>, io_points: Data) -> Vec<Self> {
