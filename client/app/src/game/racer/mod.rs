@@ -331,7 +331,7 @@ unsafe fn draw_cars(car: (f64, f64), dir: (f64, f64)) {
     DrawRectanglePro(
         rec,
         Vector2{x: rec.width/2., y: rec.height/2.},
-        theta as f32,
+        theta.deg() as f32,
         Color {
             r: 255,
             g: 0,
