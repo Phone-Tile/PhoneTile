@@ -82,6 +82,7 @@ impl Game {
         match self {
             Game::Racer => GameStruct::new(String::from("Racer"), Box::new(racer::main_game), None),
             Game::MazeFight => GameStruct::new(String::from("Maze Fight"), Box::new(|network| unsafe{maze_fight::main_game(network)}), Some(9)),
+            Game::Snake => GameStruct::new(String::from("Maze Fight"), Box::new(|network| unsafe{snake::main_game(network)}), None),
             _ => panic!("this game is still awaiting for your awesome code ..."),
         }
     }
