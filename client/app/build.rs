@@ -1,7 +1,7 @@
 use std::env;
 
 fn main() {
-    let target_info = env::var("TARGET").unwrap();
+    let target_info = env::var("TARGET").unwrap_or("x86_64-unknown-linux-gnu".to_string());
     let target_info: Vec<&str> = target_info.split('-').collect();
     let arch = target_info[0];
     let (_make_arch, lib_ndk, _lib_folder) = match arch {
@@ -11,6 +11,17 @@ fn main() {
         a => (a, a, a),
     };
 
+    let target_sys = target_info[2];
+
+    if target_sys == "android" || target_sys == "androideabi" {
+        build_android(lib_ndk);
+    } else if target_sys == "linux" {
+    } else {
+        panic!("target {} not supported", target_sys);
+    }
+}
+
+fn build_android(lib_ndk: &str) {
     #[cfg(target_os = "linux")]
     let sys = "linux";
     #[cfg(target_os = "macos")]
